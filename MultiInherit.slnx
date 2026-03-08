@@ -15,4 +15,8 @@
     <File Path="Directory.Packages.props" />
     <File Path="README.md" />
   </Folder>
+  <Folder Name="/_github/" />
+  <Folder Name="/_github/workflows/">
+    <File Path=".github/workflows/dotnet.yml" />
+  </Folder>
 </Solution>
