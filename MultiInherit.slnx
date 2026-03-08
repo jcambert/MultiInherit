@@ -9,6 +9,10 @@
   <Folder Name="/samples/">
     <Project Path="MultiInherit.Sample\MultiInherit.Sample.csproj" />
   </Folder>
+
+  <Folder Name="/tests/">
+    <Project Path="MultiInherit.Tests\MultiInherit.Tests.csproj" />
+  </Folder>
   <Folder Name="/_files/">
     <File Path="CLAUDE.md" />
     <File Path="Directory.Build.props" />
