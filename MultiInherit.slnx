@@ -1,16 +1,18 @@
 <Solution>
-  <Configurations>
-    <BuildType Name="Debug" />
-    <BuildType Name="Release" />
-  </Configurations>
 
   <Folder Name="/src/">
     <Project Path="MultiInherit.Core\MultiInherit.Core.csproj" />
-    <Project Path="MultiInherit.Generator\MultiInherit.Generator.csproj" />
     <Project Path="MultiInherit.EFCore\MultiInherit.EFCore.csproj" />
+    <Project Path="MultiInherit.Generator\MultiInherit.Generator.csproj" />
   </Folder>
 
   <Folder Name="/samples/">
     <Project Path="MultiInherit.Sample\MultiInherit.Sample.csproj" />
+  </Folder>
+  <Folder Name="/_files/">
+    <File Path="CLAUDE.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="README.md" />
   </Folder>
 </Solution>
