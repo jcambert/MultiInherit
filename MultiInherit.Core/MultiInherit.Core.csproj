@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <RootNamespace>MultiInherit</RootNamespace>
+    <AssemblyName>MultiInherit.Core</AssemblyName>
+    <PackageId>MultiInherit.Core</PackageId>
+    <Description>Runtime attributes and model registry for MultiInherit — Odoo-style multiple inheritance for C#.</Description>
+  </PropertyGroup>
+</Project>

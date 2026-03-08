@@ -1,0 +1,16 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+  </Configurations>
+
+  <Folder Name="/src/">
+    <Project Path="MultiInherit.Core\MultiInherit.Core.csproj" />
+    <Project Path="MultiInherit.Generator\MultiInherit.Generator.csproj" />
+    <Project Path="MultiInherit.EFCore\MultiInherit.EFCore.csproj" />
+  </Folder>
+
+  <Folder Name="/samples/">
+    <Project Path="MultiInherit.Sample\MultiInherit.Sample.csproj" />
+  </Folder>
+</Solution>

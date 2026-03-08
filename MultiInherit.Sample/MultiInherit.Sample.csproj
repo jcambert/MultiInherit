@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <RootNamespace>MultiInherit.Sample</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MultiInherit.Core\MultiInherit.Core.csproj" />
+    <ProjectReference Include="..\MultiInherit.EFCore\MultiInherit.EFCore.csproj" />
+    <!-- Reference the generator as an analyzer so Roslyn picks it up at build time -->
+    <ProjectReference Include="..\MultiInherit.Generator\MultiInherit.Generator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+</Project>

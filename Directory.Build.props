@@ -1,0 +1,23 @@
+<Project>
+  <!--
+    Properties applied to ALL projects in the solution.
+    Individual projects can override if needed.
+  -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Authors>YourOrg</Authors>
+    <Company>YourOrg</Company>
+    <Copyright>Copyright © YourOrg 2025</Copyright>
+    <RepositoryUrl>https://github.com/yourorg/MultiInherit</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <!-- Enforce consistent line endings and encoding -->
+  <PropertyGroup>
+    <Deterministic>true</Deterministic>
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+  </PropertyGroup>
+</Project>
