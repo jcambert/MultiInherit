@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <IsTestProject>true</IsTestProject>
+    <!-- Disable doc generation for test projects -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- xUnit1051: advisory CancellationToken recommendation (not an error) -->
+    <NoWarn>$(NoWarn);xUnit1051;CS0618</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Core runtime types (IModel, attributes, ModelRegistry…) -->
+    <ProjectReference Include="..\MultiInherit.Core\MultiInherit.Core.csproj" />
+
+    <!--
+      Generator as Roslyn analyzer  → generates .g.cs for test models
+      ReferenceOutputAssembly=true  → test code can use ModelGenerator directly
+    -->
+    <ProjectReference Include="..\MultiInherit.Generator\MultiInherit.Generator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="true" />
+
+    <!-- EFCore for integration tests -->
+    <ProjectReference Include="..\MultiInherit.EFCore\MultiInherit.EFCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- xUnit v3 -->
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+
+    <!-- Roslyn CSharp compiler API for generator unit tests -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+
+    <!-- TestContainers + PostgreSQL -->
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+
+    <!-- Coverage -->
+    <PackageReference Include="coverlet.collector">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
