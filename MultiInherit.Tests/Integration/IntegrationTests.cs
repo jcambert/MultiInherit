@@ -315,6 +315,8 @@ public class IntegrationTests(PostgreSqlFixture fixture)
         Assert.Contains("test.tag", names);
         Assert.Contains("test.order", names);
         Assert.Contains("test.order.line", names);
+        Assert.Contains("test.contact", names);
+        Assert.Contains("test.employee", names);
     }
 
     [Fact]
@@ -323,5 +325,149 @@ public class IntegrationTests(PostgreSqlFixture fixture)
         // Verifies EF Core can create a DbContext without throwing
         using var ctx = Ctx();
         Assert.NotNull(ctx.Model);
+    }
+
+    // ── Delegation inheritance ([Inherits]) ───────────────────────────────
+
+    [Fact]
+    public async Task Delegation_Insert_Employee_AlsoPersistsContact()
+    {
+        await using var ctx = Ctx();
+        var employee = new TestEmployee
+        {
+            Contact = new TestContact { Name = "Alice", Email = "alice@test.com" },
+            Department = "Engineering"
+        };
+        ctx.Set<TestEmployee>().Add(employee);
+        await ctx.SaveChangesAsync();
+
+        // Verify both records exist independently
+        await using var verify = Ctx();
+        var emp = await verify.Set<TestEmployee>().FindAsync(employee.Id);
+        var cont = await verify.Set<TestContact>().FindAsync(employee.Contact.Id);
+
+        Assert.NotNull(emp);
+        Assert.NotNull(cont);
+        Assert.Equal("Engineering", emp.Department);
+        Assert.Equal("Alice", cont.Name);
+        Assert.Equal("alice@test.com", cont.Email);
+    }
+
+    [Fact]
+    public async Task Delegation_DelegatedProperties_AccessibleViaNavigation()
+    {
+        await using var ctx = Ctx();
+        var employee = new TestEmployee
+        {
+            Contact = new TestContact { Name = "Bob", Email = "bob@test.com" },
+            Department = "HR"
+        };
+        ctx.Set<TestEmployee>().Add(employee);
+        await ctx.SaveChangesAsync();
+
+        await using var verify = Ctx();
+        var emp = await verify.Set<TestEmployee>()
+            .Include(e => e.Contact)
+            .FirstAsync(e => e.Id == employee.Id);
+
+        // Delegated properties forwarded via navigation
+        Assert.Equal("Bob", emp.Name);
+        Assert.Equal("bob@test.com", emp.Email);
+    }
+
+    [Fact]
+    public async Task Delegation_Delete_Employee_AlsoDeletesContact()
+    {
+        // Arrange
+        int employeeId, contactId;
+        await using (var ctx = Ctx())
+        {
+            var employee = new TestEmployee
+            {
+                Contact = new TestContact { Name = "Charlie", Email = "c@test.com" },
+                Department = "Finance"
+            };
+            ctx.Set<TestEmployee>().Add(employee);
+            await ctx.SaveChangesAsync();
+            employeeId = employee.Id;
+            contactId = employee.Contact.Id;
+        }
+
+        // Act — delete the employee (navigation already loaded)
+        await using (var ctx = Ctx())
+        {
+            var emp = await ctx.Set<TestEmployee>()
+                .Include(e => e.Contact)
+                .FirstAsync(e => e.Id == employeeId);
+            ctx.Set<TestEmployee>().Remove(emp);
+            await ctx.SaveChangesAsync();
+        }
+
+        // Assert — both records gone
+        await using var verify = Ctx();
+        Assert.Null(await verify.Set<TestEmployee>().FindAsync(employeeId));
+        Assert.Null(await verify.Set<TestContact>().FindAsync(contactId));
+    }
+
+    [Fact]
+    public async Task Delegation_Delete_Employee_WithoutLoadedNav_AlsoDeletesContact()
+    {
+        // Arrange
+        int employeeId, contactId;
+        await using (var ctx = Ctx())
+        {
+            var employee = new TestEmployee
+            {
+                Contact = new TestContact { Name = "Dave", Email = "d@test.com" },
+                Department = "Legal"
+            };
+            ctx.Set<TestEmployee>().Add(employee);
+            await ctx.SaveChangesAsync();
+            employeeId = employee.Id;
+            contactId = employee.Contact.Id;
+        }
+
+        // Act — delete WITHOUT Include (navigation not loaded — tests lazy load in SaveChanges)
+        await using (var ctx = Ctx())
+        {
+            var emp = await ctx.Set<TestEmployee>().FindAsync(employeeId);
+            ctx.Set<TestEmployee>().Remove(emp!);
+            await ctx.SaveChangesAsync();
+        }
+
+        // Assert — both records gone
+        await using var verify = Ctx();
+        Assert.Null(await verify.Set<TestEmployee>().FindAsync(employeeId));
+        Assert.Null(await verify.Set<TestContact>().FindAsync(contactId));
+    }
+
+    [Fact]
+    public void Delegation_ModelMeta_HasDelegatedPropertyNames()
+    {
+        var meta = ModelRegistry.Get("test.employee");
+
+        Assert.NotNull(meta);
+        Assert.NotNull(meta.DelegationInherits);
+        Assert.Contains("test.contact", meta.DelegationInherits!);
+        Assert.NotNull(meta.DelegatedPropertyNames);
+        Assert.Contains("Name", meta.DelegatedPropertyNames!);
+        Assert.Contains("Email", meta.DelegatedPropertyNames!);
+    }
+
+    [Fact]
+    public void Delegation_EFCore_DoesNotMapDelegatedPropertiesAsColumns()
+    {
+        using var ctx = Ctx();
+        var employeeEntity = ctx.Model.FindEntityType(typeof(TestEmployee))!;
+        var propertyNames = employeeEntity.GetProperties().Select(p => p.Name).ToList();
+
+        // Delegated properties must NOT appear as columns on test_employee
+        Assert.DoesNotContain("Name", propertyNames);
+        Assert.DoesNotContain("Email", propertyNames);
+
+        // Own properties must be present
+        Assert.Contains("Id", propertyNames);
+        Assert.Contains("ContactId", propertyNames);
+        Assert.Contains("Department", propertyNames);
     }
 }

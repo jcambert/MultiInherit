@@ -20,4 +20,10 @@ public sealed record ModelMeta(
     string Name,
     Type ClrType,
     IReadOnlyList<string> Inherits,
-    IReadOnlyList<string>? DelegationInherits = null);
+    IReadOnlyList<string>? DelegationInherits = null,
+    /// <summary>
+    /// Properties on this model that are delegated to a parent model via [Inherits].
+    /// These properties forward reads/writes to the parent record and must NOT be
+    /// mapped as columns in this model's own table.
+    /// </summary>
+    IReadOnlyList<string>? DelegatedPropertyNames = null);

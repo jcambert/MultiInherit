@@ -21,8 +21,8 @@ internal static class ModelResolver
 
         DetectCircularInheritance(byModel, diagnostics);
 
-        var allFieldsByModel    = BuildFieldMap(byModel, ct);
-        var allComputedByModel  = BuildComputedMap(byModel, ct);
+        var allFieldsByModel = BuildFieldMap(byModel, ct);
+        var allComputedByModel = BuildComputedMap(byModel, ct);
         var allRelationsByModel = BuildRelationMap(byModel, ct);
 
         var results = new List<ResolvedModel>();
@@ -36,7 +36,7 @@ internal static class ModelResolver
 
             // ── Classical inheritance ──────────────────────────────────────
             var classicalFields = new List<FieldDeclaration>();
-            var allParents      = new List<string>();
+            var allParents = new List<string>();
 
             foreach (var parentName in primary.ClassicalParents)
             {
@@ -98,18 +98,18 @@ internal static class ModelResolver
                 ? cf : (IReadOnlyList<ComputedFieldDeclaration>)[];
 
             results.Add(new ResolvedModel(
-                ModelName:                  modelName,
-                Namespace:                  primary.Namespace,
-                ClassName:                  primary.ClassName,
-                OwnFields:                  ownFields,
+                ModelName: modelName,
+                Namespace: primary.Namespace,
+                ClassName: primary.ClassName,
+                OwnFields: ownFields,
                 ClassicallyInheritedFields: classicalFields,
-                DelegationParents:          delegations,
-                ComputedFields:             computedFields,
-                Relations:                  resolvedRelations,
-                ConstraintMethods:          constraintMethods,
-                OnchangeMethods:            onchangeMethods,
-                SqlConstraints:             sqlConstraints,
-                AllParentNames:             allParents
+                DelegationParents: delegations,
+                ComputedFields: computedFields,
+                Relations: resolvedRelations,
+                ConstraintMethods: constraintMethods,
+                OnchangeMethods: onchangeMethods,
+                SqlConstraints: sqlConstraints,
+                AllParentNames: allParents
             ));
         }
 
@@ -166,19 +166,19 @@ internal static class ModelResolver
             }
 
             result.Add(new ResolvedRelation(
-                Kind:             rel.Kind,
-                PropertyName:     rel.PropertyName,
-                ComodelName:      rel.ComodelName,
+                Kind: rel.Kind,
+                PropertyName: rel.PropertyName,
+                ComodelName: rel.ComodelName,
                 ComodelClassName: comodelClassName,
-                Label:            rel.Label,
-                Help:             rel.Help,
-                Required:         rel.Required,
-                ForeignKeyName:   rel.ForeignKeyName,
-                OnDelete:         rel.OnDelete,
-                InverseField:     rel.InverseField,
-                RelationTable:    relationTable,
-                Column1:          rel.Column1 ?? modelName.Replace('.', '_') + "_id",
-                Column2:          rel.Column2 ?? rel.ComodelName.Replace('.', '_') + "_id"
+                Label: rel.Label,
+                Help: rel.Help,
+                Required: rel.Required,
+                ForeignKeyName: rel.ForeignKeyName,
+                OnDelete: rel.OnDelete,
+                InverseField: rel.InverseField,
+                RelationTable: relationTable,
+                Column1: rel.Column1 ?? modelName.Replace('.', '_') + "_id",
+                Column2: rel.Column2 ?? rel.ComodelName.Replace('.', '_') + "_id"
             ));
         }
 
@@ -247,8 +247,8 @@ internal static class ModelResolver
         Dictionary<string, List<ModelDeclaration>> byModel,
         List<Diagnostic> diagnostics)
     {
-        var visited  = new HashSet<string>(StringComparer.Ordinal);
-        var inStack  = new HashSet<string>(StringComparer.Ordinal);
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        var inStack = new HashSet<string>(StringComparer.Ordinal);
         // reported évite les doublons : si deux cycles partagent un nœud,
         // le second cycle peut ne pas être signalé individuellement — comportement
         // conservateur intentionnel pour éviter les diagnostics redondants.
@@ -263,7 +263,7 @@ internal static class ModelResolver
             if (inStack.Contains(current))
             {
                 var cycleStart = stack.IndexOf(current);
-                var cycle      = stack.Skip(cycleStart).Append(current);
+                var cycle = stack.Skip(cycleStart).Append(current);
                 var p = byModel[current].FirstOrDefault(s => s.IsNewModel) ?? byModel[current][0];
                 diagnostics.Add(Diagnostics.Make(Diagnostics.CircularInheritance, p.Location,
                     current, string.Join(" → ", cycle)));

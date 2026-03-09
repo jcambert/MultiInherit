@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using System.Reflection;
 
 namespace MultiInherit.EFCore;
@@ -6,11 +7,17 @@ namespace MultiInherit.EFCore;
 /// <summary>
 /// Base DbContext that automatically maps every registered model
 /// and configures relations declared via [Many2one], [One2many], [Many2many].
+///
+/// Delegation inheritance ([Inherits]) is also handled:
+/// <list type="bullet">
+/// <item>Delegated properties (forwarded from parent) are ignored in EF Core mapping.</item>
+/// <item>The delegation FK is configured as required with CASCADE on delete.</item>
+/// <item>Deleting a delegating entity automatically deletes its delegated parent records.</item>
+/// </list>
 /// </summary>
-public abstract class ModelDbContext : DbContext
+public abstract class ModelDbContext(DbContextOptions options) : DbContext(options)
 {
-    protected ModelDbContext(DbContextOptions options) : base(options) { }
-
+    ///<inheritdoc />
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -18,6 +25,113 @@ public abstract class ModelDbContext : DbContext
         ConfigureDelegationInheritance(builder);
         ConfigureRelations(builder);
         ConfigureSqlConstraints(builder);
+    }
+
+    // ── Cascade-delete delegated parents when a delegating entity is removed ─
+
+    /// <summary>
+    /// Saves all changes made in this context to the underlying database.
+    /// </summary>
+    /// <remarks>This override ensures that any parent entities delegated to a removed entity are also deleted
+    /// as part of the save operation. Call this method to persist changes, including cascading deletions, to the
+    /// database.</remarks>
+    /// <param name="acceptAllChangesOnSuccess">true to accept all changes in the context after the changes have been successfully saved to the database; false
+    /// to retain the changes so that SaveChanges can be called again in the event of a failure.</param>
+    /// <returns>The number of state entries written to the database. This can be zero if no entities were added, modified, or
+    /// deleted.</returns>
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        CascadeDeleteDelegatedParents();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    /// <summary>
+    /// Asynchronously saves all changes made in this context to the underlying database, applying any necessary
+    /// cascading deletes before persisting data.
+    /// </summary>
+    /// <remarks>This method performs cascading deletes for delegated parent entities prior to saving changes.
+    /// It overrides the base implementation to ensure referential integrity is maintained when deleting related
+    /// entities.</remarks>
+    /// <param name="acceptAllChangesOnSuccess">true to automatically accept all changes in the context after a successful save operation; otherwise, false.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to request cancellation of the asynchronous save operation.</param>
+    /// <returns>A task that represents the asynchronous save operation. The task result contains the number of state entries
+    /// written to the database.</returns>
+    public override async Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        await CascadeDeleteDelegatedParentsAsync();
+        return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void CascadeDeleteDelegatedParents()
+        => MarkDelegatedParentsForDeletion();
+
+    private Task CascadeDeleteDelegatedParentsAsync()
+    {
+        MarkDelegatedParentsForDeletion();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// For every entity marked as Deleted that has delegation parents ([Inherits]),
+    /// also marks the delegated parent record for deletion.
+    ///
+    /// Strategy: if the navigation property is already loaded, use it directly.
+    /// Otherwise, create a stub entity from the FK value and mark it for deletion
+    /// (EF Core supports deleting by PK-only stub without loading the entity).
+    /// </summary>
+    private void MarkDelegatedParentsForDeletion()
+    {
+        var deleted = ChangeTracker.Entries()
+            .Where(e => e.State == EntityState.Deleted)
+            .ToList();
+
+        foreach (var entry in deleted)
+        {
+            var clrType = entry.Entity.GetType();
+            var meta = MultiInherit.ModelRegistry.All().FirstOrDefault(m => m.ClrType == clrType);
+            if (meta?.DelegationInherits == null || meta.DelegationInherits.Count == 0) continue;
+
+            foreach (var parentName in meta.DelegationInherits)
+            {
+                var parentMeta = MultiInherit.ModelRegistry.Get(parentName);
+                if (parentMeta == null) continue;
+
+                var navProp = FindNavigationProperty(clrType, parentMeta.ClrType);
+                if (navProp == null) continue;
+
+                // Use already-loaded navigation if available
+                var parentObj = navProp.GetValue(entry.Entity);
+                if (parentObj != null)
+                {
+                    Entry(parentObj).State = EntityState.Deleted;
+                    continue;
+                }
+
+                // Navigation not loaded: resolve via FK and create a stub for deletion.
+                // EF Core can delete a stub entity if its PK is set (no SELECT needed).
+                var fkProp = FindPropertyByName(clrType, navProp.Name + "Id");
+                if (fkProp == null) continue;
+                var fkValue = fkProp.GetValue(entry.Entity);
+                if (fkValue is not int fkId || fkId == 0) continue;
+
+                // Check the change tracker first to avoid double-marking
+                var tracked = ChangeTracker.Entries()
+                    .FirstOrDefault(e => e.Entity.GetType() == parentMeta.ClrType
+                                      && e.Entity is IModel m && m.Id == fkId);
+                if (tracked != null)
+                {
+                    tracked.State = EntityState.Deleted;
+                }
+                else
+                {
+                    // Attach a minimal stub and mark it for deletion
+                    var stub = Activator.CreateInstance(parentMeta.ClrType);
+                    if (stub is IModel model) model.Id = fkId;
+                    Entry(stub!).State = EntityState.Deleted;
+                }
+            }
+        }
     }
 
     // ── Auto-map all IModel types ─────────────────────────────────────────
@@ -30,6 +144,9 @@ public abstract class ModelDbContext : DbContext
             entity.ToTable(meta.Name.Replace('.', '_'));
             EnsurePrimaryKey(entity, meta.ClrType);
             IgnoreNonStoredComputed(entity, meta.ClrType);
+            // Delegated properties live in the parent's table — do NOT create columns here.
+            foreach (var propName in meta.DelegatedPropertyNames ?? [])
+                entity.Ignore(propName);
         }
     }
 
@@ -39,8 +156,8 @@ public abstract class ModelDbContext : DbContext
     {
         foreach (var meta in MultiInherit.ModelRegistry.All())
         {
-            // Utiliser DelegationInherits pour ne configurer que les parents [Inherits],
-            // pas les parents classiques [Inherit] qui n'ont pas de FK sur ce modèle.
+            // Use DelegationInherits (not Inherits) to target only [Inherits] parents,
+            // not classical [Inherit] parents which have no FK on this model.
             var delegationParents = meta.DelegationInherits ?? [];
             foreach (var parentName in delegationParents)
             {
@@ -56,9 +173,14 @@ public abstract class ModelDbContext : DbContext
                         .HasOne(parentMeta.ClrType, navProp.Name)
                         .WithMany()
                         .HasForeignKey(fkProp.Name)
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .IsRequired(true)
+                        // CASCADE: if the parent record is deleted directly,
+                        // cascade to the dependent (child) record.
+                        // Application-level reverse cascade (child→parent) is
+                        // handled in SaveChanges/SaveChangesAsync.
+                        .OnDelete(DeleteBehavior.Cascade);
                 }
-                catch (InvalidOperationException) { /* topologie complexe — configurer manuellement */ }
+                catch (InvalidOperationException) { /* complex topology — configure manually */ }
             }
         }
     }
@@ -80,12 +202,12 @@ public abstract class ModelDbContext : DbContext
                     var comodelMeta = MultiInherit.ModelRegistry.Get(m2o.ComodelName);
                     if (comodelMeta == null) continue;
 
-                    var fkName  = m2o.ForeignKey ?? prop.Name + "Id";
+                    var fkName = m2o.ForeignKey ?? prop.Name + "Id";
                     var onDelete = m2o.OnDelete switch
                     {
-                        MultiInherit.OnDeleteAction.Cascade  => DeleteBehavior.Cascade,
+                        MultiInherit.OnDeleteAction.Cascade => DeleteBehavior.Cascade,
                         MultiInherit.OnDeleteAction.Restrict => DeleteBehavior.Restrict,
-                        _                                    => DeleteBehavior.SetNull
+                        _ => DeleteBehavior.SetNull
                     };
 
                     try
@@ -120,9 +242,9 @@ public abstract class ModelDbContext : DbContext
                     var parts = new[] { meta.Name, m2m.ComodelName }
                         .Select(n => n.Replace('.', '_'))
                         .OrderBy(n => n).ToArray();
-                    var table   = m2m.RelationTable ?? $"{parts[0]}_{parts[1]}_rel";
-                    var col1    = m2m.Column1 ?? meta.Name.Replace('.', '_') + "_id";
-                    var col2    = m2m.Column2 ?? m2m.ComodelName.Replace('.', '_') + "_id";
+                    var table = m2m.RelationTable ?? $"{parts[0]}_{parts[1]}_rel";
+                    var col1 = m2m.Column1 ?? meta.Name.Replace('.', '_') + "_id";
+                    var col2 = m2m.Column2 ?? m2m.ComodelName.Replace('.', '_') + "_id";
 
                     // Find inverse nav on comodel (if declared)
                     var inverseProp = comodelMeta.ClrType
@@ -132,7 +254,7 @@ public abstract class ModelDbContext : DbContext
 
                     try
                     {
-                        var left  = builder.Entity(clrType);
+                        var left = builder.Entity(clrType);
                         if (inverseProp != null)
                         {
                             left.HasMany(comodelMeta.ClrType, prop.Name)
@@ -176,7 +298,7 @@ public abstract class ModelDbContext : DbContext
                 {
                     // UNIQUE(col1, col2) → index avec IsUnique
                     var start = trimmed.IndexOf('(');
-                    var end   = trimmed.LastIndexOf(')');
+                    var end = trimmed.LastIndexOf(')');
                     if (start >= 0 && end > start)
                     {
                         var cols = trimmed.Substring(start + 1, end - start - 1)

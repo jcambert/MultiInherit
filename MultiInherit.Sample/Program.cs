@@ -18,9 +18,9 @@ var partner = new ResPartner { Name = "Acme Corp", Email = "contact@acme.com" };
 
 var product = new ProductTemplate
 {
-    Name      = "Widget Pro",
+    Name = "Widget Pro",
     ListPrice = 49.99m,
-    Vendor    = partner   // Many2one set: VendorId auto-synced
+    Vendor = partner   // Many2one set: VendorId auto-synced
 };
 Console.WriteLine($"[Many2one]   Product '{product.Name}', VendorId = {product.VendorId}");
 Console.WriteLine($"             Vendor.Name = {product.Vendor?.Name}");
@@ -35,11 +35,11 @@ Console.WriteLine();
 // ── 4. Computed subtotal + total ──────────────────────────────────────────
 var line1 = new SaleOrderLine
 {
-    Order     = order,
-    Product   = product,
-    Quantity  = 3,
+    Order = order,
+    Product = product,
+    Quantity = 3,
     UnitPrice = 49.99m,
-    Discount  = 10m
+    Discount = 10m
 };
 // TriggerOnchange shows product auto-filled price:
 line1.TriggerOnchange(["Product"]);
@@ -53,8 +53,8 @@ Console.WriteLine($"             Order total (stored computed) = {order.Total:C}
 Console.WriteLine();
 
 // ── 5. Many2many tags ─────────────────────────────────────────────────────
-var vipTag    = new ResTag { Name = "VIP",    Color = "gold" };
-var techTag   = new ResTag { Name = "Tech",   Color = "blue" };
+var vipTag = new ResTag { Name = "VIP", Color = "gold" };
+var techTag = new ResTag { Name = "Tech", Color = "blue" };
 partner.Tags.Add(vipTag);
 partner.Tags.Add(techTag);
 Console.WriteLine($"[Many2many]  Partner tags: {string.Join(", ", partner.Tags.Select(t => t.Name))}");

@@ -10,7 +10,7 @@ namespace MultiInherit;
 /// <param name="IsStored">False for non-stored computed fields (recomputed on every read)</param>
 public sealed record ModelFieldInfo(
     string Name,
-    Type   ClrType,
-    bool   IsComputed,
-    bool   IsStored
+    Type ClrType,
+    bool IsComputed,
+    bool IsStored
 );

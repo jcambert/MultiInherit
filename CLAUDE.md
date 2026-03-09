@@ -226,7 +226,7 @@ partial class SaleOrderLine : IModel, INotifyPropertyChanged
 
 ### Priorité basse
 - [x] **Égalité structurelle `ResolvedModel`** — `ResolvedModelComparer` + `.WithComparer()` dans le pipeline
-- [ ] Migrations EF Core aware de la délégation (`[Inherits]`)
+- [x] **Migrations EF Core aware de la délégation** — `DelegatedPropertyNames` dans `ModelMeta` ; propriétés déléguées ignorées par EF Core ; FK requise + `OnDelete(Cascade)` ; `SaveChanges`/`SaveChangesAsync` cascade-delete le parent (via navigation chargée ou stub PK) — 6 tests d'intégration
 - [ ] Génération OpenAPI/JSON Schema depuis `ModelFieldInfo`
 - [ ] Support multi-assembly (comodels dans des assemblies séparées)
 

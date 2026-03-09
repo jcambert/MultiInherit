@@ -6,20 +6,20 @@ namespace MultiInherit.Generator;
 
 internal static class ModelParser
 {
-    private const string ModelAttr      = "Model";
-    private const string InheritAttr    = "Inherit";
-    private const string InheritsAttr   = "Inherits";
-    private const string FieldAttr      = "ModelField";
-    private const string ComputeAttr    = "Compute";
-    private const string DependsAttr    = "Depends";
-    private const string Many2oneAttr   = "Many2one";
-    private const string One2manyAttr   = "One2many";
-    private const string Many2manyAttr  = "Many2many";
+    private const string ModelAttr = "Model";
+    private const string InheritAttr = "Inherit";
+    private const string InheritsAttr = "Inherits";
+    private const string FieldAttr = "ModelField";
+    private const string ComputeAttr = "Compute";
+    private const string DependsAttr = "Depends";
+    private const string Many2oneAttr = "Many2one";
+    private const string One2manyAttr = "One2many";
+    private const string Many2manyAttr = "Many2many";
     private const string ConstrainsAttr = "Constrains";
-    private const string OnchangeAttr   = "Onchange";
-    private const string SqlConstrAttr  = "SqlConstraint";
-    private const string SelectionAttr  = "Selection";
-    private const string DefaultAttr    = "Default";
+    private const string OnchangeAttr = "Onchange";
+    private const string SqlConstrAttr = "SqlConstraint";
+    private const string SelectionAttr = "Selection";
+    private const string DefaultAttr = "Default";
 
     public static ModelDeclaration? Parse(
         INamedTypeSymbol classSymbol,
@@ -28,14 +28,14 @@ internal static class ModelParser
     {
         ct.ThrowIfCancellationRequested();
 
-        var modelAttr     = GetAttribute(classSymbol, ModelAttr);
-        var inheritAttrs  = GetAttributes(classSymbol, InheritAttr);
+        var modelAttr = GetAttribute(classSymbol, ModelAttr);
+        var inheritAttrs = GetAttributes(classSymbol, InheritAttr);
         var inheritsAttrs = GetAttributes(classSymbol, InheritsAttr);
 
         if (modelAttr == null && inheritAttrs.Count == 0 && inheritsAttrs.Count == 0)
             return null;
 
-        var location  = classSymbol.Locations.FirstOrDefault();
+        var location = classSymbol.Locations.FirstOrDefault();
         var syntaxRef = classSymbol.DeclaringSyntaxReferences.FirstOrDefault();
         if (syntaxRef?.GetSyntax(ct) is ClassDeclarationSyntax cls &&
             !cls.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
@@ -90,40 +90,40 @@ internal static class ModelParser
         // [SqlConstraint] class-level
         var sqlConstraints = GetAttributes(classSymbol, SqlConstrAttr)
             .Select(a => new SqlConstraintDeclaration(
-                Name:    GetStringArg(a, 0) ?? string.Empty,
-                Sql:     GetStringArg(a, 1) ?? string.Empty,
+                Name: GetStringArg(a, 0) ?? string.Empty,
+                Sql: GetStringArg(a, 1) ?? string.Empty,
                 Message: GetStringArg(a, 2) ?? string.Empty))
             .ToList();
 
         // Properties: fields, computed fields, relations
-        var ownFields      = new List<FieldDeclaration>();
+        var ownFields = new List<FieldDeclaration>();
         var computedFields = new List<ComputedFieldDeclaration>();
-        var relations      = new List<RelationDeclaration>();
+        var relations = new List<RelationDeclaration>();
 
         ParseProperties(classSymbol, ownFields, computedFields, relations, modelName, diagnostics);
 
         // Methods: [Constrains], [Onchange]
         var constraintMethods = new List<ConstraintMethodDeclaration>();
-        var onchangeMethods   = new List<OnchangeMethodDeclaration>();
+        var onchangeMethods = new List<OnchangeMethodDeclaration>();
 
         ParseMethods(classSymbol, constraintMethods, onchangeMethods, modelName, diagnostics);
 
         return new ModelDeclaration(
-            ModelName:          modelName,
-            Namespace:          ns,
-            ClassName:          classSymbol.Name,
-            IsNewModel:         modelAttr != null,
-            ClassicalParents:   classicalParents,
-            ExtensionParents:   extensionParents,
-            DelegationParents:  delegationParents,
-            OwnFields:          ownFields,
-            ComputedFields:     computedFields,
-            Relations:          relations,
-            ConstraintMethods:  constraintMethods,
-            OnchangeMethods:    onchangeMethods,
-            SqlConstraints:     sqlConstraints,
-            Location:           location,
-            FilePath:           location?.SourceTree?.FilePath ?? string.Empty
+            ModelName: modelName,
+            Namespace: ns,
+            ClassName: classSymbol.Name,
+            IsNewModel: modelAttr != null,
+            ClassicalParents: classicalParents,
+            ExtensionParents: extensionParents,
+            DelegationParents: delegationParents,
+            OwnFields: ownFields,
+            ComputedFields: computedFields,
+            Relations: relations,
+            ConstraintMethods: constraintMethods,
+            OnchangeMethods: onchangeMethods,
+            SqlConstraints: sqlConstraints,
+            Location: location,
+            FilePath: location?.SourceTree?.FilePath ?? string.Empty
         );
     }
 
@@ -153,82 +153,82 @@ internal static class ModelParser
         {
             if (member.IsStatic || member.IsIndexer || member.IsImplicitlyDeclared) continue;
 
-            var propLoc    = member.Locations.FirstOrDefault();
-            var typeName   = member.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var propLoc = member.Locations.FirstOrDefault();
+            var typeName = member.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             var isNullable = member.NullableAnnotation == NullableAnnotation.Annotated;
-            var fieldAttr  = GetAttribute(member, FieldAttr);
+            var fieldAttr = GetAttribute(member, FieldAttr);
 
-            var m2oAttr  = GetAttribute(member, Many2oneAttr);
-            var o2mAttr  = GetAttribute(member, One2manyAttr);
-            var m2mAttr  = GetAttribute(member, Many2manyAttr);
+            var m2oAttr = GetAttribute(member, Many2oneAttr);
+            var o2mAttr = GetAttribute(member, One2manyAttr);
+            var m2mAttr = GetAttribute(member, Many2manyAttr);
             var compAttr = GetAttribute(member, ComputeAttr);
 
             if (m2oAttr != null)
             {
                 var comodel = GetStringArg(m2oAttr, 0) ?? string.Empty;
-                var fkName  = GetNamedStringArg(m2oAttr, "ForeignKey") ?? member.Name + "Id";
+                var fkName = GetNamedStringArg(m2oAttr, "ForeignKey") ?? member.Name + "Id";
                 relations.Add(new RelationDeclaration(
-                    Kind:            RelationKind.Many2one,
-                    PropertyName:    member.Name,
-                    ComodelName:     comodel,
+                    Kind: RelationKind.Many2one,
+                    PropertyName: member.Name,
+                    ComodelName: comodel,
                     ComodelClassName: DeriveClassName(comodel),
-                    Label:           GetNamedStringArg(m2oAttr, "String") ?? (fieldAttr != null ? GetNamedStringArg(fieldAttr!, "String") : null),
-                    Help:            GetNamedStringArg(m2oAttr, "Help"),
-                    Required:        GetNamedBoolArg(m2oAttr, "Required"),
-                    ForeignKeyName:  fkName,
-                    OnDelete:        GetNamedEnumArg(m2oAttr, "OnDelete", "SetNull"),
-                    InverseField:    null,
-                    RelationTable:   null,
-                    Column1:         null,
-                    Column2:         null,
-                    Location:        propLoc
+                    Label: GetNamedStringArg(m2oAttr, "String") ?? (fieldAttr != null ? GetNamedStringArg(fieldAttr!, "String") : null),
+                    Help: GetNamedStringArg(m2oAttr, "Help"),
+                    Required: GetNamedBoolArg(m2oAttr, "Required"),
+                    ForeignKeyName: fkName,
+                    OnDelete: GetNamedEnumArg(m2oAttr, "OnDelete", "SetNull"),
+                    InverseField: null,
+                    RelationTable: null,
+                    Column1: null,
+                    Column2: null,
+                    Location: propLoc
                 ));
             }
             else if (o2mAttr != null)
             {
-                var comodel  = GetStringArg(o2mAttr, 0) ?? string.Empty;
-                var inverse  = GetStringArg(o2mAttr, 1) ?? string.Empty;
+                var comodel = GetStringArg(o2mAttr, 0) ?? string.Empty;
+                var inverse = GetStringArg(o2mAttr, 1) ?? string.Empty;
                 relations.Add(new RelationDeclaration(
-                    Kind:            RelationKind.One2many,
-                    PropertyName:    member.Name,
-                    ComodelName:     comodel,
+                    Kind: RelationKind.One2many,
+                    PropertyName: member.Name,
+                    ComodelName: comodel,
                     ComodelClassName: DeriveClassName(comodel),
-                    Label:           GetNamedStringArg(o2mAttr, "String"),
-                    Help:            GetNamedStringArg(o2mAttr, "Help"),
-                    Required:        false,
-                    ForeignKeyName:  string.Empty,
-                    OnDelete:        "SetNull",
-                    InverseField:    inverse,
-                    RelationTable:   null,
-                    Column1:         null,
-                    Column2:         null,
-                    Location:        propLoc
+                    Label: GetNamedStringArg(o2mAttr, "String"),
+                    Help: GetNamedStringArg(o2mAttr, "Help"),
+                    Required: false,
+                    ForeignKeyName: string.Empty,
+                    OnDelete: "SetNull",
+                    InverseField: inverse,
+                    RelationTable: null,
+                    Column1: null,
+                    Column2: null,
+                    Location: propLoc
                 ));
             }
             else if (m2mAttr != null)
             {
                 var comodel = GetStringArg(m2mAttr, 0) ?? string.Empty;
                 relations.Add(new RelationDeclaration(
-                    Kind:            RelationKind.Many2many,
-                    PropertyName:    member.Name,
-                    ComodelName:     comodel,
+                    Kind: RelationKind.Many2many,
+                    PropertyName: member.Name,
+                    ComodelName: comodel,
                     ComodelClassName: DeriveClassName(comodel),
-                    Label:           GetNamedStringArg(m2mAttr, "String"),
-                    Help:            GetNamedStringArg(m2mAttr, "Help"),
-                    Required:        false,
-                    ForeignKeyName:  string.Empty,
-                    OnDelete:        "SetNull",
-                    InverseField:    null,
-                    RelationTable:   GetNamedStringArg(m2mAttr, "RelationTable"),
-                    Column1:         GetNamedStringArg(m2mAttr, "Column1"),
-                    Column2:         GetNamedStringArg(m2mAttr, "Column2"),
-                    Location:        propLoc
+                    Label: GetNamedStringArg(m2mAttr, "String"),
+                    Help: GetNamedStringArg(m2mAttr, "Help"),
+                    Required: false,
+                    ForeignKeyName: string.Empty,
+                    OnDelete: "SetNull",
+                    InverseField: null,
+                    RelationTable: GetNamedStringArg(m2mAttr, "RelationTable"),
+                    Column1: GetNamedStringArg(m2mAttr, "Column1"),
+                    Column2: GetNamedStringArg(m2mAttr, "Column2"),
+                    Location: propLoc
                 ));
             }
             else if (compAttr != null)
             {
                 var methodName = GetStringArg(compAttr, 0) ?? string.Empty;
-                var store      = GetNamedBoolArg(compAttr, "Store");
+                var store = GetNamedBoolArg(compAttr, "Store");
                 var dependsStr = GetNamedStringArg(compAttr, "Depends");
 
                 if (!string.IsNullOrEmpty(methodName) && !methodNames.Contains(methodName))
@@ -253,15 +253,15 @@ internal static class ModelParser
                         .Select(tv => tv.Value as string).Where(s => s != null)!);
 
                 computedFields.Add(new ComputedFieldDeclaration(
-                    PropertyName:  member.Name,
-                    TypeName:      typeName,
-                    IsNullable:    isNullable,
+                    PropertyName: member.Name,
+                    TypeName: typeName,
+                    IsNullable: isNullable,
                     ComputeMethod: methodName,
-                    Store:         store,
-                    DependsOn:     depends.Distinct().ToArray(),
-                    Label:         fieldAttr != null ? GetNamedStringArg(fieldAttr, "String") : null,
-                    Help:          fieldAttr != null ? GetNamedStringArg(fieldAttr, "Help") : null,
-                    Location:      propLoc
+                    Store: store,
+                    DependsOn: depends.Distinct().ToArray(),
+                    Label: fieldAttr != null ? GetNamedStringArg(fieldAttr, "String") : null,
+                    Help: fieldAttr != null ? GetNamedStringArg(fieldAttr, "Help") : null,
+                    Location: propLoc
                 ));
             }
             else
@@ -325,17 +325,17 @@ internal static class ModelParser
                 }
 
                 ownFields.Add(new FieldDeclaration(
-                    PropertyName:    member.Name,
-                    TypeName:        typeName,
-                    IsNullable:      isNullable,
-                    HasSetter:       member.SetMethod != null,
-                    Label:           fieldAttr != null ? GetNamedStringArg(fieldAttr, "String") : null,
-                    Required:        fieldAttr != null && GetNamedBoolArg(fieldAttr, "Required"),
-                    Readonly:        fieldAttr != null && GetNamedBoolArg(fieldAttr, "Readonly"),
-                    Help:            fieldAttr != null ? GetNamedStringArg(fieldAttr, "Help") : null,
-                    Default:         fieldAttr != null ? GetNamedStringArg(fieldAttr, "Default") : null,
+                    PropertyName: member.Name,
+                    TypeName: typeName,
+                    IsNullable: isNullable,
+                    HasSetter: member.SetMethod != null,
+                    Label: fieldAttr != null ? GetNamedStringArg(fieldAttr, "String") : null,
+                    Required: fieldAttr != null && GetNamedBoolArg(fieldAttr, "Required"),
+                    Readonly: fieldAttr != null && GetNamedBoolArg(fieldAttr, "Readonly"),
+                    Help: fieldAttr != null ? GetNamedStringArg(fieldAttr, "Help") : null,
+                    Default: fieldAttr != null ? GetNamedStringArg(fieldAttr, "Default") : null,
                     SelectionValues: selectionValues,
-                    DefaultMethod:   defaultMethod,
+                    DefaultMethod: defaultMethod,
                     IsPartialProperty: isPartialProp
                 ));
             }
@@ -432,7 +432,7 @@ internal static class ModelParser
             "0" => "SetNull",
             "1" => "Cascade",
             "2" => "Restrict",
-            _   => defaultValue
+            _ => defaultValue
         };
     }
 

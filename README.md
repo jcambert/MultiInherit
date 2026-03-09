@@ -405,7 +405,7 @@ MultiInherit/
 - [x] NuGet packaging — `MultiInherit.Core`, `MultiInherit.Generator` (analyzer), `MultiInherit.EFCore`
 - [x] `[Selection]` field — restricts a `string` property to a predefined set of values, validated in `ValidateConstraints()`
 - [x] `[Default(nameof(GetDefault))]` — partial property whose initial value is provided by an instance method; generator emits lazy-initialized backing field
-- [ ] Migrations EF Core aware de la délégation (`[Inherits]`)
+- [x] EF Core delegation-aware migrations — delegated properties ignored from child table; FK required + CASCADE; `SaveChanges` cascade-deletes delegated parent on child removal
 - [ ] Génération OpenAPI/JSON Schema depuis `ModelFieldInfo`
 - [ ] Support multi-assembly (comodels dans des assemblies séparées)
 - [ ] Égalité structurelle sur `ResolvedModel` pour optimiser le cache incrémental Roslyn

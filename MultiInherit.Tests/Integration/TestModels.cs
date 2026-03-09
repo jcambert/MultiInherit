@@ -1,6 +1,32 @@
-using MultiInherit;
-
 namespace MultiInherit.Tests.Integration.Models;
+
+// ════════════════════════════════════════════════════════════════════════════
+// Delegation inheritance test models
+// test.contact  — delegated parent (owns the stored fields)
+// test.employee — delegating child ([Inherits("test.contact")])
+// ════════════════════════════════════════════════════════════════════════════
+
+[Model("test.contact", Description = "Test Contact")]
+public partial class TestContact
+{
+    [ModelField(String = "Name", Required = true)]
+    public string Name { get; set; } = string.Empty;
+
+    [ModelField(String = "Email")]
+    public string? Email { get; set; }
+}
+
+/// <summary>
+/// Employee delegates identity fields (Name, Email) to test.contact via [Inherits].
+/// The FK ContactId is auto-generated; Name and Email are forwarded transparently.
+/// </summary>
+[Model("test.employee", Description = "Test Employee")]
+[Inherits("test.contact")]
+public partial class TestEmployee
+{
+    [ModelField(String = "Department")]
+    public string Department { get; set; } = string.Empty;
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // test.category  — simple lookup (Many2one target)

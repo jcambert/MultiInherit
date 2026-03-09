@@ -1,7 +1,7 @@
-using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using MultiInherit.Generator;
+using System.Collections.Immutable;
 
 namespace MultiInherit.Tests.Helpers;
 

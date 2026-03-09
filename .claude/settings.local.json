@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(dotnet build:*)",
-      "Bash(dotnet test:*)"
+      "Bash(dotnet test:*)",
+      "Bash(dotnet pack:*)",
+      "Read(//tmp/**)",
+      "Bash(ls *.nupkg)",
+      "Bash(unzip -l MultiInherit.Generator.0.1.0.nupkg)"
     ]
   }
 }

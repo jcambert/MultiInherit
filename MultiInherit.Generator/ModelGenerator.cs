@@ -51,7 +51,7 @@ public sealed class ModelGenerator : IIncrementalGenerator
         {
             spc.CancellationToken.ThrowIfCancellationRequested();
 
-            var source   = CodeEmitter.Emit(model);
+            var source = CodeEmitter.Emit(model);
             var hintName = $"{model.Namespace}.{model.ClassName}.g.cs"
                 .Replace('<', '_').Replace('>', '_')
                 .TrimStart('.');
@@ -68,14 +68,14 @@ public sealed class ModelGenerator : IIncrementalGenerator
         if (cls.AttributeLists.Count == 0) return false;
 
         foreach (var attrList in cls.AttributeLists)
-        foreach (var attr in attrList.Attributes)
-        {
-            var name = attr.Name.ToString();
-            if (name is "Model"    or "ModelAttribute"
-                     or "Inherit"  or "InheritAttribute"
-                     or "Inherits" or "InheritsAttribute")
-                return true;
-        }
+            foreach (var attr in attrList.Attributes)
+            {
+                var name = attr.Name.ToString();
+                if (name is "Model" or "ModelAttribute"
+                         or "Inherit" or "InheritAttribute"
+                         or "Inherits" or "InheritsAttribute")
+                    return true;
+            }
         return false;
     }
 

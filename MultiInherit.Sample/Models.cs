@@ -1,6 +1,3 @@
-using MultiInherit;
-using System.Collections.Generic;
-
 namespace MultiInherit.Sample.Models;
 
 // ════════════════════════════════════════════════════════════════════════════

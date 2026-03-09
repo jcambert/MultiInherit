@@ -70,8 +70,8 @@ internal static class CodeEmitter
 
         foreach (var f in fields)
         {
-            var nullable  = f.IsNullable ? "?" : "";
-            var bf        = $"_{LowerFirst(f.PropertyName)}_backing";
+            var nullable = f.IsNullable ? "?" : "";
+            var bf = $"_{LowerFirst(f.PropertyName)}_backing";
             var defaulted = $"_{LowerFirst(f.PropertyName)}_defaulted";
 
             sb.AppendLine($"    // [Default(\"{f.DefaultMethod}\")] — lazy initialisation via méthode");
@@ -141,8 +141,8 @@ internal static class CodeEmitter
         {
             switch (rel.Kind)
             {
-                case RelationKind.Many2one:  EmitMany2one(sb, rel);  break;
-                case RelationKind.One2many:  EmitOne2many(sb, rel);  break;
+                case RelationKind.Many2one: EmitMany2one(sb, rel); break;
+                case RelationKind.One2many: EmitOne2many(sb, rel); break;
                 case RelationKind.Many2many: EmitMany2many(sb, rel); break;
             }
         }
@@ -209,10 +209,10 @@ internal static class CodeEmitter
     {
         foreach (var cf in model.ComputedFields)
         {
-            var nullable     = cf.IsNullable ? "?" : "";
+            var nullable = cf.IsNullable ? "?" : "";
             var backingField = $"_{LowerFirst(cf.PropertyName)}";
-            var dirtyFlag    = $"_{LowerFirst(cf.PropertyName)}_dirty";
-            var depends      = string.Join(", ", cf.DependsOn.Select(d => $"\"{d}\""));
+            var dirtyFlag = $"_{LowerFirst(cf.PropertyName)}_dirty";
+            var depends = string.Join(", ", cf.DependsOn.Select(d => $"\"{d}\""));
 
             sb.AppendLine($"    // Computed [{(cf.Store ? "stored" : "non-stored")}]  method: {cf.ComputeMethod}");
             if (cf.DependsOn.Length > 0) sb.AppendLine($"    // Depends on: {string.Join(", ", cf.DependsOn)}");
@@ -424,15 +424,21 @@ internal static class CodeEmitter
 
     private static void EmitModuleInitializer(StringBuilder sb, ResolvedModel model)
     {
-        var allParents   = string.Join(", ", model.AllParentNames.Select(p => $"\"{p}\""));
+        var allParents = string.Join(", ", model.AllParentNames.Select(p => $"\"{p}\""));
         var delegParents = string.Join(", ", model.DelegationParents.Select(d => $"\"{d.ParentModelName}\""));
+        var delegPropNames = string.Join(", ",
+            model.DelegationParents
+                 .SelectMany(d => d.DelegatedFields.Select(f => f.PropertyName))
+                 .Distinct()
+                 .Select(n => $"\"{n}\""));
         sb.AppendLine("    [ModuleInitializer]");
         sb.AppendLine($"    internal static void __RegisterModel_{Sanitize(model.ModelName)}()");
         sb.AppendLine("        => ModelRegistry.Register(new ModelMeta(");
-        sb.AppendLine($"            Name:              \"{model.ModelName}\",");
-        sb.AppendLine($"            ClrType:           typeof({model.ClassName}),");
-        sb.AppendLine($"            Inherits:          [{allParents}],");
-        sb.AppendLine($"            DelegationInherits: [{delegParents}]));");
+        sb.AppendLine($"            Name:                 \"{model.ModelName}\",");
+        sb.AppendLine($"            ClrType:              typeof({model.ClassName}),");
+        sb.AppendLine($"            Inherits:             [{allParents}],");
+        sb.AppendLine($"            DelegationInherits:   [{delegParents}],");
+        sb.AppendLine($"            DelegatedPropertyNames: [{delegPropNames}]));");
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────

@@ -26,19 +26,19 @@ internal sealed record ResolvedDelegation(
 
 internal sealed record ResolvedRelation(
     RelationKind Kind,
-    string       PropertyName,
-    string       ComodelName,
-    string       ComodelClassName,
-    string?      Label,
-    string?      Help,
-    bool         Required,
+    string PropertyName,
+    string ComodelName,
+    string ComodelClassName,
+    string? Label,
+    string? Help,
+    bool Required,
     // Many2one
-    string       ForeignKeyName,      // always populated (derived or explicit)
-    string       OnDelete,
+    string ForeignKeyName,      // always populated (derived or explicit)
+    string OnDelete,
     // One2many
-    string?      InverseField,
+    string? InverseField,
     // Many2many
-    string?      RelationTable,
-    string?      Column1,
-    string?      Column2
+    string? RelationTable,
+    string? Column1,
+    string? Column2
 );

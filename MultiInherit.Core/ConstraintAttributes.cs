@@ -38,8 +38,8 @@ public sealed class ConstrainsAttribute(params string[] fields) : Attribute
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
 public sealed class SqlConstraintAttribute(string name, string sql, string message) : Attribute
 {
-    public string Name    { get; } = name;
-    public string Sql     { get; } = sql;
+    public string Name { get; } = name;
+    public string Sql { get; } = sql;
     public string Message { get; } = message;
 }
 
