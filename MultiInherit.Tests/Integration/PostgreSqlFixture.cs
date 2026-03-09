@@ -9,8 +9,7 @@ namespace MultiInherit.Tests.Integration;
 /// </summary>
 public sealed class PostgreSqlFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:16-alpine")
         .Build();
 
     /// <summary>Connection string to the running PostgreSQL instance.</summary>
