@@ -82,10 +82,15 @@ internal static class ModelResolver
             var resolvedRelations = ResolveRelations(
                 modelName, primary, allRelationsByModel, byModel, diagnostics);
 
-            // ── Constraints + Onchange (merged across shards) ──────────────
-            var constraintMethods = shards.SelectMany(s => s.ConstraintMethods).ToList();
-            var onchangeMethods   = shards.SelectMany(s => s.OnchangeMethods).ToList();
-            var sqlConstraints    = shards.SelectMany(s => s.SqlConstraints).ToList();
+            // ── Constraints + Onchange (merged across shards, dédupliqués par nom) ──
+            // INamedTypeSymbol.GetMembers() retourne tous les membres de toutes les
+            // déclarations partielles, donc chaque shard voit les mêmes méthodes.
+            var constraintMethods = shards.SelectMany(s => s.ConstraintMethods)
+                .GroupBy(c => c.MethodName).Select(g => g.First()).ToList();
+            var onchangeMethods = shards.SelectMany(s => s.OnchangeMethods)
+                .GroupBy(c => c.MethodName).Select(g => g.First()).ToList();
+            var sqlConstraints = shards.SelectMany(s => s.SqlConstraints)
+                .GroupBy(c => c.Name).Select(g => g.First()).ToList();
 
             var ownFields = allFieldsByModel.TryGetValue(modelName, out var of)
                 ? of : (IReadOnlyList<FieldDeclaration>)[];

@@ -144,16 +144,10 @@ public class DiagnosticsTests
         Assert.DoesNotContain(diags, d => d.Id == "MI0002");
     }
 
-    // ── MI0003 — Class must be partial (currently dropped from parser) ─────
+    // ── MI0003 — Class must be partial ───────────────────────────────────
 
-    /// <remarks>
-    /// ModelParser emits MI0003 but the diagnostic is lost before reaching
-    /// RegisterSourceOutput. Non-partial classes return null from Parse()
-    /// and simply produce no generated source — no error is surfaced.
-    /// This test documents the current observable behavior.
-    /// </remarks>
     [Fact]
-    public void MI0003_NonPartialClass_ProducesNoSource_NoDiagnostic()
+    public void MI0003_NonPartialClass_EmitsDiagnosticAndNoSource()
     {
         const string source = """
             using MultiInherit;
@@ -164,7 +158,7 @@ public class DiagnosticsTests
 
         var (diags, sources) = GeneratorTestHelper.Run(source);
 
-        Assert.DoesNotContain(diags, d => d.Id == "MI0003");
+        Assert.Contains(diags, d => d.Id == "MI0003");
         Assert.Empty(sources);
     }
 

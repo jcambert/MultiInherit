@@ -70,20 +70,21 @@ internal static class CodeEmitter
             sb.AppendLine();
             var nav = del.NavigationPropertyName;
             sb.AppendLine($"    private {del.ParentClassName}? _{LowerFirst(nav)};");
-            sb.AppendLine($"    public {del.ParentClassName} {nav}");
+            sb.AppendLine($"    public {del.ParentClassName}? {nav}");
             sb.AppendLine("    {");
-            sb.AppendLine($"        get => _{LowerFirst(nav)} ??= new {del.ParentClassName}();");
+            sb.AppendLine($"        get => _{LowerFirst(nav)};");
             sb.AppendLine($"        set => _{LowerFirst(nav)} = value;");
             sb.AppendLine("    }");
             sb.AppendLine();
             foreach (var f in del.DelegatedFields)
             {
-                var nullable = f.IsNullable ? "?" : "";
+                // La navigation étant nullable, les champs délégués le sont aussi
+                var nullable = "?";
                 sb.AppendLine($"    // Delegated from {del.ParentModelName}");
                 sb.AppendLine($"    public {f.TypeName}{nullable} {f.PropertyName}");
                 sb.AppendLine("    {");
-                sb.AppendLine($"        get => {nav}.{f.PropertyName};");
-                if (f.HasSetter) sb.AppendLine($"        set => {nav}.{f.PropertyName} = value;");
+                sb.AppendLine($"        get => {nav}?.{f.PropertyName};");
+                if (f.HasSetter) sb.AppendLine($"        set {{ if ({nav} != null) {nav}.{f.PropertyName} = value; }}");
                 sb.AppendLine("    }");
                 sb.AppendLine();
             }
@@ -246,15 +247,30 @@ internal static class CodeEmitter
         sb.AppendLine("    /// Runs all [Constrains] methods. Call before saving the record.");
         sb.AppendLine("    /// Throws <see cref=\"ModelValidationException\"/> on the first violation.");
         sb.AppendLine("    /// </summary>");
-        sb.AppendLine("    public void ValidateConstraints(System.Collections.Generic.IEnumerable<string>? changedFields = null)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        var changed = changedFields?.ToHashSet() ?? null;");
-        foreach (var cm in model.ConstraintMethods)
+        // Champs statiques pour éviter une allocation HashSet par appel
+        foreach (var cm in model.ConstraintMethods.Where(c => c.Fields.Length > 0))
         {
             var fieldSet = string.Join(", ", cm.Fields.Select(f => $"\"{f}\""));
-            sb.AppendLine($"        // [{string.Join(", ", cm.Fields)}]");
-            sb.AppendLine($"        if (changed == null || new System.Collections.Generic.HashSet<string> {{ {fieldSet} }}.Overlaps(changed))");
-            sb.AppendLine($"            {cm.MethodName}();");
+            sb.AppendLine($"    private static readonly System.Collections.Generic.HashSet<string> ___{cm.MethodName}_fields =");
+            sb.AppendLine($"        new System.Collections.Generic.HashSet<string> {{ {fieldSet} }};");
+        }
+
+        sb.AppendLine("    public void ValidateConstraints(System.Collections.Generic.IEnumerable<string>? changedFields = null)");
+        sb.AppendLine("    {");
+        sb.AppendLine("        var changed = changedFields?.ToHashSet();");
+        foreach (var cm in model.ConstraintMethods)
+        {
+            if (cm.Fields.Length == 0)
+            {
+                // Aucun champ déclaré → la contrainte s'exécute toujours
+                sb.AppendLine($"        {cm.MethodName}();");
+            }
+            else
+            {
+                sb.AppendLine($"        // [{string.Join(", ", cm.Fields)}]");
+                sb.AppendLine($"        if (changed == null || ___{cm.MethodName}_fields.Overlaps(changed))");
+                sb.AppendLine($"            {cm.MethodName}();");
+            }
         }
         sb.AppendLine("    }");
         sb.AppendLine();

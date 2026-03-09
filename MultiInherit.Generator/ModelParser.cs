@@ -350,11 +350,13 @@ internal static class ModelParser
 
     private static string DeriveDefaultFkName(string parentModelName)
     {
-        var segment = parentModelName.Split('.').Last();
+        var segment = parentModelName.Split('.').LastOrDefault(s => s.Length > 0);
+        if (string.IsNullOrEmpty(segment)) return "ParentId";
         return char.ToUpperInvariant(segment[0]) + segment.Substring(1) + "Id";
     }
 
     /// <summary>"res.partner" → "ResPartner" (best-effort, resolver will fix up)</summary>
     private static string DeriveClassName(string modelName)
-        => string.Concat(modelName.Split('.').Select(s => char.ToUpperInvariant(s[0]) + s.Substring(1)));
+        => string.Concat(modelName.Split('.').Where(s => s.Length > 0)
+            .Select(s => char.ToUpperInvariant(s[0]) + s.Substring(1)));
 }

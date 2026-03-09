@@ -159,15 +159,36 @@ public abstract class ModelDbContext : DbContext
     {
         foreach (var meta in MultiInherit.ModelRegistry.All())
         {
-            var sqlConstrProp = meta.ClrType.GetField(
+            var sqlConstrField = meta.ClrType.GetField(
                 "SqlConstraints",
                 BindingFlags.Public | BindingFlags.Static);
-            if (sqlConstrProp?.GetValue(null) is not (string Name, string Sql, string Message)[] constraints)
+            if (sqlConstrField?.GetValue(null) is not (string, string, string)[] constraints)
                 continue;
 
             var entity = builder.Entity(meta.ClrType);
             foreach (var (name, sql, _) in constraints)
-                entity.ToTable(t => t.HasCheckConstraint(name, sql));
+            {
+                var trimmed = sql.Trim();
+                if (trimmed.StartsWith("UNIQUE", StringComparison.OrdinalIgnoreCase))
+                {
+                    // UNIQUE(col1, col2) → index avec IsUnique
+                    var start = trimmed.IndexOf('(');
+                    var end   = trimmed.LastIndexOf(')');
+                    if (start >= 0 && end > start)
+                    {
+                        var cols = trimmed.Substring(start + 1, end - start - 1)
+                            .Split(',')
+                            .Select(c => c.Trim())
+                            .ToArray();
+                        entity.HasIndex(cols).IsUnique().HasDatabaseName(name);
+                    }
+                }
+                else
+                {
+                    // Prédicat booléen → CHECK constraint
+                    entity.ToTable(t => t.HasCheckConstraint(name, trimmed));
+                }
+            }
         }
     }
 

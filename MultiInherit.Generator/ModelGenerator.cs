@@ -9,30 +9,30 @@ public sealed class ModelGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var classDeclarations = context.SyntaxProvider
+        var allResults = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (node, _) => IsCandidate(node),
                 transform: static (ctx, ct) => GetModelDeclaration(ctx, ct))
-            .Where(static d => d is not null)
-            .Select(static (d, _) => d!);
+            .Where(static r => r.Declaration is not null || r.Diagnostics.Length > 0)
+            .Collect();
 
-        var allDeclarations = classDeclarations.Collect();
-
-        context.RegisterSourceOutput(allDeclarations, static (spc, declarations) =>
+        context.RegisterSourceOutput(allResults, static (spc, results) =>
         {
-            // Parse diagnostics collected during symbol extraction are re-raised here.
-            // (The transform above stores them in a thread-local; in a real generator
-            //  they would be piped via IncrementalValueProvider<(ModelDeclaration?, Diagnostic[])>
-            //  — simplified here for clarity.)
+            // Re-emit parser diagnostics collected during the transform phase
+            foreach (var result in results)
+                foreach (var d in result.Diagnostics)
+                    spc.ReportDiagnostic(d);
 
-            var parseDiagnostics = new List<Diagnostic>();
+            // Resolve only non-null declarations
+            var declarations = results
+                .Where(static r => r.Declaration is not null)
+                .Select(static r => r.Declaration!);
+
             var (resolved, resolveDiagnostics) = ModelResolver.Resolve(declarations, spc.CancellationToken);
 
-            // Emit all diagnostics
-            foreach (var d in parseDiagnostics.Concat(resolveDiagnostics))
+            foreach (var d in resolveDiagnostics)
                 spc.ReportDiagnostic(d);
 
-            // Emit source for each resolved model
             foreach (var model in resolved)
             {
                 spc.CancellationToken.ThrowIfCancellationRequested();
@@ -68,17 +68,16 @@ public sealed class ModelGenerator : IIncrementalGenerator
 
     // ── Semantic transform ────────────────────────────────────────────────
 
-    private static ModelDeclaration? GetModelDeclaration(
+    private static (ModelDeclaration? Declaration, Diagnostic[] Diagnostics) GetModelDeclaration(
         GeneratorSyntaxContext ctx,
         CancellationToken ct)
     {
         var cls = (ClassDeclarationSyntax)ctx.Node;
         if (ctx.SemanticModel.GetDeclaredSymbol(cls, ct) is not INamedTypeSymbol symbol)
-            return null;
+            return (null, Array.Empty<Diagnostic>());
 
-        // Diagnostics from parsing are collected but silently dropped here
-        // (they will be re-raised via ModelResolver in RegisterSourceOutput).
         var diagnostics = new List<Diagnostic>();
-        return ModelParser.Parse(symbol, ct, diagnostics);
+        var decl = ModelParser.Parse(symbol, ct, diagnostics);
+        return (decl, diagnostics.Count > 0 ? diagnostics.ToArray() : Array.Empty<Diagnostic>());
     }
 }
