@@ -54,11 +54,13 @@ public class TodoService(IDbContextFactory<TodoDbContext> factory) : ITodoServic
                 q = q.Where(t => t.ProjectId == null);
         }
 
-        return await q
+        // Le tri par priorité (PriorityOrder) ne peut pas être traduit en SQL :
+        // on matérialise d'abord, puis on trie entièrement en mémoire.
+        var results = await q.ToListAsync();
+        return [.. results
             .OrderBy(t => t.DueDate == null ? 1 : 0)
             .ThenBy(t => t.DueDate)
-            .ThenByDescending(t => PriorityOrder(t.Priority))
-            .ToListAsync();
+            .ThenByDescending(t => PriorityOrder(t.Priority))];
     }
 
     public async Task<TodoTask?> GetTaskByIdAsync(int id)
