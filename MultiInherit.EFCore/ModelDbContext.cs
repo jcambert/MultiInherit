@@ -210,11 +210,14 @@ public abstract class ModelDbContext(DbContextOptions options) : DbContext(optio
                         _ => DeleteBehavior.SetNull
                     };
 
+                    // Find inverse One2many nav on parent so EF Core can resolve Include()
+                    var inverseNavName = FindInverseO2mNavigation(comodelMeta.ClrType, meta.Name, fkName);
+
                     try
                     {
                         builder.Entity(clrType)
                             .HasOne(comodelMeta.ClrType, prop.Name)
-                            .WithMany()
+                            .WithMany(inverseNavName)
                             .HasForeignKey(fkName)
                             .IsRequired(m2o.Required)
                             .OnDelete(onDelete);
@@ -223,12 +226,11 @@ public abstract class ModelDbContext(DbContextOptions options) : DbContext(optio
                     continue;
                 }
 
-                // One2many — no column on this side; configure from child's Many2one
+                // One2many — la relation est configurée du côté Many2one via WithMany(propName)
                 var o2m = prop.GetCustomAttribute<MultiInherit.One2manyAttribute>();
                 if (o2m != null)
                 {
-                    // Navigation is configured by the child's Many2one — ignore here
-                    builder.Entity(clrType).Ignore(prop.Name);
+                    // Ne pas Ignore() : EF Core doit connaître la navigation pour Include()
                     continue;
                 }
 
@@ -352,6 +354,21 @@ public abstract class ModelDbContext(DbContextOptions options) : DbContext(optio
     private static PropertyInfo? FindNavigationProperty(Type childType, Type parentType)
         => childType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .FirstOrDefault(p => p.PropertyType == parentType);
+
+    /// <summary>
+    /// Returns the name of the [One2many] navigation property on <paramref name="parentType"/>
+    /// that is the inverse of a Many2one pointing back to <paramref name="childModelName"/> via <paramref name="fkName"/>.
+    /// Returns null if no such inverse nav is declared (relation remains unidirectional).
+    /// </summary>
+    private static string? FindInverseO2mNavigation(Type parentType, string childModelName, string fkName)
+        => parentType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .FirstOrDefault(p =>
+            {
+                var o2m = p.GetCustomAttribute<MultiInherit.One2manyAttribute>();
+                return o2m != null
+                    && o2m.ComodelName == childModelName
+                    && o2m.InverseField == fkName;
+            })?.Name;
 
     private static PropertyInfo? FindPropertyByName(Type type, string name)
         => type.GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
