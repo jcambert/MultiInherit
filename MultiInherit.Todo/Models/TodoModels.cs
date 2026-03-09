@@ -5,7 +5,7 @@ namespace MultiInherit.Todo.Models;
 // ═══════════════════════════════════════════════════════════════════════════
 
 [Model("todo.tag", Description = "Tag")]
-[SqlConstraint("uq_tag_label", "UNIQUE(label)", "Tag label must be unique.")]
+[SqlConstraint("uq_tag_label", "UNIQUE(Label)", "Tag label must be unique.")]
 public partial class TodoTag
 {
     [ModelField(String = "Label", Required = true)]
@@ -20,7 +20,7 @@ public partial class TodoTag
 // ═══════════════════════════════════════════════════════════════════════════
 
 [Model("todo.project", Description = "Project")]
-[SqlConstraint("uq_project_name", "UNIQUE(name)", "Project name must be unique.")]
+[SqlConstraint("uq_project_name", "UNIQUE(Name)", "Project name must be unique.")]
 public partial class TodoProject
 {
     [ModelField(String = "Name", Required = true)]

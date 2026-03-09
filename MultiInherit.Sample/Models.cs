@@ -5,7 +5,7 @@ namespace MultiInherit.Sample.Models;
 // ════════════════════════════════════════════════════════════════════════════
 
 [Model("res.tag", Description = "Tag")]
-[SqlConstraint("unique_tag_name", "UNIQUE(name)", "Tag name must be unique.")]
+[SqlConstraint("unique_tag_name", "UNIQUE(Name)", "Tag name must be unique.")]
 public partial class ResTag
 {
     [ModelField(String = "Name", Required = true)]
@@ -19,7 +19,7 @@ public partial class ResTag
 // ════════════════════════════════════════════════════════════════════════════
 
 [Model("res.partner", Description = "Contact / Partner")]
-[SqlConstraint("unique_partner_email", "UNIQUE(email)", "Email must be unique.")]
+[SqlConstraint("unique_partner_email", "UNIQUE(Email)", "Email must be unique.")]
 public partial class ResPartner
 {
     [ModelField(String = "Name", Required = true)]

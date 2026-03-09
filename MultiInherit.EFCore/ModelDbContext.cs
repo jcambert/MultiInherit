@@ -301,9 +301,16 @@ public abstract class ModelDbContext(DbContextOptions options) : DbContext(optio
                     var end = trimmed.LastIndexOf(')');
                     if (start >= 0 && end > start)
                     {
+                        // Résolution insensible à la casse : mappe les noms issus du SQL
+                        // vers les noms de propriétés CLR exacts (HasIndex est case-sensitive).
+                        var clrProps = meta.ClrType
+                            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                            .ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
+
                         var cols = trimmed.Substring(start + 1, end - start - 1)
                             .Split(',')
                             .Select(c => c.Trim())
+                            .Select(c => clrProps.TryGetValue(c, out var p) ? p.Name : c)
                             .ToArray();
                         entity.HasIndex(cols).IsUnique().HasDatabaseName(name);
                     }
