@@ -46,7 +46,7 @@ public class TodoService(IDbContextFactory<TodoDbContext> factory) : ITodoServic
 
             if (filter.OverdueOnly)
                 q = q.Where(t => t.DueDate.HasValue
-                              && t.DueDate.Value < DateTime.Today
+                              && t.DueDate.Value < DateTime.UtcNow.Date
                               && t.Status != "done"
                               && t.Status != "cancelled");
 
@@ -166,7 +166,7 @@ public class TodoService(IDbContextFactory<TodoDbContext> factory) : ITodoServic
         await using var ctx = await factory.CreateDbContextAsync();
         return await ctx.Set<TodoTask>().CountAsync(t =>
             t.DueDate.HasValue
-            && t.DueDate.Value < DateTime.Today
+            && t.DueDate.Value < DateTime.UtcNow.Date
             && t.Status != "done"
             && t.Status != "cancelled");
     }
@@ -302,7 +302,7 @@ public class TodoService(IDbContextFactory<TodoDbContext> factory) : ITodoServic
 
         var overdue = tasks.Count(t =>
             t.DueDate.HasValue
-            && t.DueDate.Value.Date < DateTime.Today
+            && t.DueDate.Value.Date < DateTime.UtcNow.Date
             && t.Status != "done"
             && t.Status != "cancelled");
 
@@ -318,7 +318,7 @@ public class TodoService(IDbContextFactory<TodoDbContext> factory) : ITodoServic
         return new TaskStats(
             Total:      tasks.Count,
             Overdue:    overdue,
-            DueToday:   tasks.Count(t => t.DueDate.HasValue && t.DueDate.Value.Date == DateTime.Today),
+            DueToday:   tasks.Count(t => t.DueDate.HasValue && t.DueDate.Value.Date == DateTime.UtcNow.Date),
             Completed:  tasks.Count(t => t.Status == "done"),
             InProgress: tasks.Count(t => t.Status == "in_progress"),
             Todo:       tasks.Count(t => t.Status == "todo"),

@@ -50,7 +50,7 @@ public sealed class DeadlineMonitorService(
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        var now   = DateTime.Today;
+        var now   = DateTime.UtcNow.Date;
         var tasks = await ctx.Set<TodoTask>()
             .Where(t => t.DueDate.HasValue
                      && t.DueDate.Value < now
@@ -64,7 +64,7 @@ public sealed class DeadlineMonitorService(
         logger.LogWarning(
             "{Count} tâche(s) en retard détectée(s) à {Time}",
             tasks.Count,
-            DateTime.Now.ToString("HH:mm:ss"));
+            DateTime.UtcNow.ToString("HH:mm:ss"));
 
         foreach (var t in tasks)
         {
@@ -75,7 +75,7 @@ public sealed class DeadlineMonitorService(
 
         // Notifier les composants Blazor
         await eventService.RaiseOverdueDetectedAsync(
-            new OverdueDetectedArgs(tasks.Count, DateTime.Now));
+            new OverdueDetectedArgs(tasks.Count, DateTime.UtcNow));
 
         // Tâches dont l'échéance est dans les prochaines 24 h (alerte préventive)
         var tomorrow  = now.AddDays(1);

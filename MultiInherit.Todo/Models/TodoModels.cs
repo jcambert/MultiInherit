@@ -101,7 +101,7 @@ public partial class TodoTask
 
     private void _computeIsOverdue()
         => IsOverdue = DueDate.HasValue
-            && DueDate.Value.Date < DateTime.Today
+            && DueDate.Value.Date < DateTime.UtcNow.Date
             && Status != "done"
             && Status != "cancelled";
 

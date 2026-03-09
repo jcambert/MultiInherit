@@ -39,6 +39,14 @@ public class TodoDbContext(DbContextOptions<TodoDbContext> options)
 /// </summary>
 public static class TodoSeeder
 {
+    // Retourne minuit UTC du jour J + offset (Kind=Utc, requis par Npgsql timestamptz).
+    private static DateTime UtcDate(int offsetDays = 0)
+    {
+        var u = DateTime.UtcNow;
+        return new DateTime(u.Year, u.Month, u.Day, 0, 0, 0, DateTimeKind.Utc)
+            .AddDays(offsetDays);
+    }
+
     public static async Task SeedAsync(TodoDbContext ctx)
     {
         // Ne seeder qu'une seule fois
@@ -67,7 +75,7 @@ public static class TodoSeeder
             Description = "Ajouter la gestion des tokens JWT pour l'API REST.",
             Priority = "high",
             Status = "in_progress",
-            DueDate = DateTime.Today.AddDays(3),
+            DueDate = UtcDate(3),
             ProjectId = devProject.Id,
             EstimatedMinutes = 240
         };
@@ -77,7 +85,7 @@ public static class TodoSeeder
             Description = "La pagination saute des enregistrements sur la page 3.",
             Priority = "urgent",
             Status = "todo",
-            DueDate = DateTime.Today.AddDays(-1), // Overdue !
+            DueDate = UtcDate(-1), // Overdue !
             ProjectId = devProject.Id,
             EstimatedMinutes = 60
         };
@@ -87,8 +95,8 @@ public static class TodoSeeder
             Description = "Créer les wireframes du nouveau dashboard analytique.",
             Priority = "normal",
             Status = "done",
-            DueDate = DateTime.Today.AddDays(-5),
-            CompletedAt = DateTime.Today.AddDays(-2),
+            DueDate = UtcDate(-5),
+            CompletedAt = UtcDate(-2),
             ProjectId = designProject.Id,
             EstimatedMinutes = 180,
             ActualMinutes = 200
@@ -99,7 +107,7 @@ public static class TodoSeeder
             Description = "GitHub Actions pour build, test et deploy automatique.",
             Priority = "high",
             Status = "todo",
-            DueDate = DateTime.Today.AddDays(7),
+            DueDate = UtcDate(7),
             ProjectId = opsProject.Id,
             EstimatedMinutes = 300
         };
@@ -109,7 +117,7 @@ public static class TodoSeeder
             Description = "OpenAPI/Swagger pour tous les endpoints publics.",
             Priority = "low",
             Status = "todo",
-            DueDate = DateTime.Today.AddDays(14),
+            DueDate = UtcDate(14),
             ProjectId = devProject.Id,
             EstimatedMinutes = 480
         };
@@ -119,7 +127,7 @@ public static class TodoSeeder
             Description = "Utiliser Include() et projection pour éviter les requêtes N+1 dans les listes.",
             Priority = "normal",
             Status = "todo",
-            DueDate = DateTime.Today.AddDays(5),
+            DueDate = UtcDate(5),
             ProjectId = devProject.Id,
             EstimatedMinutes = 120
         };
@@ -134,7 +142,7 @@ public static class TodoSeeder
             Status = "done",
             ParentTaskId = t1.Id,
             ProjectId = devProject.Id,
-            CompletedAt = DateTime.Now.AddHours(-2)
+            CompletedAt = DateTime.UtcNow.AddHours(-2)
         };
         var sub2 = new TodoTask
         {
