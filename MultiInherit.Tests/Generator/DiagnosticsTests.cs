@@ -738,6 +738,100 @@ public class DiagnosticsTests
         Assert.DoesNotContain(diags, d => d.Id == "MI0102");
     }
 
+    // ── MI0013 — Default method not found ─────────────────────────────────
+
+    [Fact]
+    public void MI0013_DefaultMethod_NotFound()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                [Default("GetDefaultStatus")]
+                public partial string Status { get; set; }
+                // GetDefaultStatus does not exist
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diags, d => d.Id == "MI0013");
+    }
+
+    [Fact]
+    public void MI0013_DefaultMethod_WrongReturnType()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                [Default(nameof(GetDefaultStatus))]
+                public partial string Status { get; set; }
+
+                private int GetDefaultStatus() => 42;  // returns int, not string
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diags, d => d.Id == "MI0013");
+    }
+
+    [Fact]
+    public void MI0013_NotEmitted_WhenDefaultMethodValid()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                [Default(nameof(GetDefaultStatus))]
+                public partial string Status { get; set; }
+
+                private string GetDefaultStatus() => "draft";
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.DoesNotContain(diags, d => d.Id == "MI0013");
+    }
+
+    [Fact]
+    public void MI0013_DefaultMethod_GeneratesPropertyImplementation()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                [Default(nameof(GetDefaultStatus))]
+                public partial string Status { get; set; }
+
+                private string GetDefaultStatus() => "draft";
+            }
+            """;
+
+        var (diags, sources) = GeneratorTestHelper.Run(source);
+
+        Assert.DoesNotContain(diags, d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
+        Assert.Single(sources);
+        var src = sources[0];
+        Assert.Contains("GetDefaultStatus()", src);
+        Assert.Contains("_status_backing", src);
+        Assert.Contains("_status_defaulted", src);
+    }
+
     // ── No diagnostics on valid model ─────────────────────────────────────
 
     [Fact]

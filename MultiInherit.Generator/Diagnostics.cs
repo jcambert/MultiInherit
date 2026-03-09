@@ -124,6 +124,17 @@ internal static class Diagnostics
         isEnabledByDefault: true
     );
 
+    /// <summary>[Default] method not found or has wrong return type.</summary>
+    public static readonly DiagnosticDescriptor DefaultMethodNotFound = new(
+        id:                 "MI0013",
+        title:              "Default method not found",
+        messageFormat:      "Property '{0}' on model '{1}' declares [Default(\"{2}\")] but no matching non-static method named '{2}' with a compatible return type was found on the class",
+        category:           Category,
+        defaultSeverity:    DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri:        "https://github.com/yourorg/MultiInherit/docs/MI0013"
+    );
+
     /// <summary>[Selection] can only be applied to string or string? properties.</summary>
     public static readonly DiagnosticDescriptor SelectionOnNonStringProperty = new(
         id:                 "MI0012",

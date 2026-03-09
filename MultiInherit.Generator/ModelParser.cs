@@ -19,6 +19,7 @@ internal static class ModelParser
     private const string OnchangeAttr   = "Onchange";
     private const string SqlConstrAttr  = "SqlConstraint";
     private const string SelectionAttr  = "Selection";
+    private const string DefaultAttr    = "Default";
 
     public static ModelDeclaration? Parse(
         INamedTypeSymbol classSymbol,
@@ -142,6 +143,12 @@ internal static class ModelParser
                 .Select(m => m.Name),
             StringComparer.Ordinal);
 
+        // Pour [Default] : méthodes non-statiques, par nom (on vérifie le type de retour ensuite)
+        var instanceMethodsByName = cls.GetMembers().OfType<IMethodSymbol>()
+            .Where(m => m.MethodKind == MethodKind.Ordinary && !m.IsStatic)
+            .GroupBy(m => m.Name)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+
         foreach (var member in cls.GetMembers().OfType<IPropertySymbol>())
         {
             if (member.IsStatic || member.IsIndexer || member.IsImplicitlyDeclared) continue;
@@ -259,12 +266,12 @@ internal static class ModelParser
             }
             else
             {
+                // ── [Selection] ──────────────────────────────────────────
                 var selectionAttr = GetAttribute(member, SelectionAttr);
                 string[]? selectionValues = null;
 
                 if (selectionAttr != null)
                 {
-                    // MI0012 : [Selection] requiert string ou string?
                     var baseType = member.Type.SpecialType;
                     var isString = baseType == SpecialType.System_String ||
                                    (member.Type is INamedTypeSymbol { SpecialType: SpecialType.System_String });
@@ -279,6 +286,44 @@ internal static class ModelParser
                             .ToArray()!;
                 }
 
+                // ── [Default] ────────────────────────────────────────────
+                var defaultAttr = GetAttribute(member, DefaultAttr);
+                string? defaultMethod = null;
+                bool isPartialProp = false;
+
+                if (defaultAttr != null)
+                {
+                    var defMethodName = GetStringArg(defaultAttr, 0);
+                    if (!string.IsNullOrEmpty(defMethodName))
+                    {
+                        if (!instanceMethodsByName.TryGetValue(defMethodName!, out var defMethod))
+                        {
+                            diagnostics.Add(Diagnostics.Make(Diagnostics.DefaultMethodNotFound,
+                                propLoc, member.Name, modelName, defMethodName!));
+                        }
+                        else
+                        {
+                            // Vérifie que le type de retour est compatible avec le type de la propriété
+                            var retTypeName = defMethod.ReturnType
+                                .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                                .TrimEnd('?');
+                            var propTypeName = typeName.TrimEnd('?');
+                            if (retTypeName != propTypeName)
+                            {
+                                diagnostics.Add(Diagnostics.Make(Diagnostics.DefaultMethodNotFound,
+                                    propLoc, member.Name, modelName, defMethodName!));
+                            }
+                            else
+                            {
+                                defaultMethod = defMethodName;
+                                isPartialProp = member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is
+                                    PropertyDeclarationSyntax pSyn &&
+                                    pSyn.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
+                            }
+                        }
+                    }
+                }
+
                 ownFields.Add(new FieldDeclaration(
                     PropertyName:    member.Name,
                     TypeName:        typeName,
@@ -289,7 +334,9 @@ internal static class ModelParser
                     Readonly:        fieldAttr != null && GetNamedBoolArg(fieldAttr, "Readonly"),
                     Help:            fieldAttr != null ? GetNamedStringArg(fieldAttr, "Help") : null,
                     Default:         fieldAttr != null ? GetNamedStringArg(fieldAttr, "Default") : null,
-                    SelectionValues: selectionValues
+                    SelectionValues: selectionValues,
+                    DefaultMethod:   defaultMethod,
+                    IsPartialProperty: isPartialProp
                 ));
             }
         }

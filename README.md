@@ -216,6 +216,18 @@ public string Status { get; set; } = "draft";
 
 The property must be `string` or `string?`; applying `[Selection]` to any other type emits **MI0012**.
 
+### `[Default(nameof(MethodName))]`
+Provides a method-based default value for a `partial` property. The generator implements the property with a lazy backing field initialized on first access by calling the named method.
+
+```csharp
+[Default(nameof(GetDefaultStatus))]
+public partial string Status { get; set; }
+
+private string GetDefaultStatus() => "draft";
+```
+
+The method must be non-static and return a value compatible with the property type. If the method is not found or returns an incompatible type, **MI0013** is emitted. The property must be declared `partial`; if it is not, the generator records the default for metadata purposes only.
+
 ---
 
 ## Computed fields
@@ -269,6 +281,7 @@ public partial class SaleOrder
 | `MI0010` | Error | Relation comodel not found in this compilation |
 | `MI0011` | Error | `[Compute]` property is not declared `partial` |
 | `MI0012` | Error | `[Selection]` applied to a non-`string` property |
+| `MI0013` | Error | `[Default]` method not found or return type incompatible |
 | `MI0101` | Warning | Field name conflict between two classical parents |
 | `MI0102` | Warning | Model declared in global namespace |
 
@@ -391,7 +404,7 @@ MultiInherit/
 
 - [x] NuGet packaging — `MultiInherit.Core`, `MultiInherit.Generator` (analyzer), `MultiInherit.EFCore`
 - [x] `[Selection]` field — restricts a `string` property to a predefined set of values, validated in `ValidateConstraints()`
-- [ ] `[Default(nameof(GetDefault))]` — computed default value via method
+- [x] `[Default(nameof(GetDefault))]` — partial property whose initial value is provided by an instance method; generator emits lazy-initialized backing field
 - [ ] Migrations EF Core aware de la délégation (`[Inherits]`)
 - [ ] Génération OpenAPI/JSON Schema depuis `ModelFieldInfo`
 - [ ] Support multi-assembly (comodels dans des assemblies séparées)

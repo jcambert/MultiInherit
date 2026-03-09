@@ -33,7 +33,9 @@ internal sealed record FieldDeclaration(
     bool      Readonly,
     string?   Help,
     string?   Default,
-    string[]? SelectionValues = null   // non-null → champ [Selection]
+    string[]? SelectionValues   = null,   // non-null → champ [Selection]
+    string?   DefaultMethod     = null,   // non-null → champ [Default], générateur implémenter la propriété partial
+    bool      IsPartialProperty = false   // true quand la propriété est déclarée partial + [Default]
 );
 
 // ── Computed field ────────────────────────────────────────────────────────

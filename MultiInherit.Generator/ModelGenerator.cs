@@ -19,9 +19,6 @@ public sealed class ModelGenerator : IIncrementalGenerator
 
         // Étape batch : résolution cross-modèles (parents, cycles, relations).
         // Les dépendances inter-modèles imposent de traiter tous les modèles ensemble.
-        // TODO: ajouter l'égalité structurelle à ResolvedModel pour que Roslyn puisse
-        //       mettre en cache les sorties par modèle et éviter de régénérer les fichiers
-        //       inchangés lors d'une rebuild incrémentale.
         var resolvedBatch = allResults.Select(static (results, ct) =>
         {
             var diagsBuilder = ImmutableArray.CreateBuilder<Diagnostic>();
@@ -45,9 +42,11 @@ public sealed class ModelGenerator : IIncrementalGenerator
                 spc.ReportDiagnostic(d);
         });
 
-        // Émission par modèle : quand ResolvedModel aura l'égalité structurelle,
-        // Roslyn pourra éviter de régénérer les fichiers .g.cs inchangés.
-        var perModel = resolvedBatch.SelectMany(static (batch, _) => batch.Models);
+        // Émission par modèle : ResolvedModelComparer permet à Roslyn d'éviter de
+        // régénérer les fichiers .g.cs inchangés lors des rebuilds incrémentiels.
+        var perModel = resolvedBatch
+            .SelectMany(static (batch, _) => batch.Models)
+            .WithComparer(ResolvedModelComparer.Instance);
         context.RegisterSourceOutput(perModel, static (spc, model) =>
         {
             spc.CancellationToken.ThrowIfCancellationRequested();

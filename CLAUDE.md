@@ -222,9 +222,10 @@ partial class SaleOrderLine : IModel, INotifyPropertyChanged
   - Version partagée dans `Directory.Build.props` (`<Version>0.1.0</Version>`)
   - Dépendance Core→Generator documentée dans `.nuspec` pour la publication
 - [x] **Champ `[Selection]`** — `SelectionAttribute`, MI0012, validation générée dans `ValidateConstraints()`
-- [ ] **`[Default(nameof(GetDefault))]`** — valeur par défaut via méthode
+- [x] **`[Default(nameof(GetDefault))]`** — `DefaultAttribute`, MI0013, propriété `partial` avec backing field lazy initialisé via méthode
 
 ### Priorité basse
+- [x] **Égalité structurelle `ResolvedModel`** — `ResolvedModelComparer` + `.WithComparer()` dans le pipeline
 - [ ] Migrations EF Core aware de la délégation (`[Inherits]`)
 - [ ] Génération OpenAPI/JSON Schema depuis `ModelFieldInfo`
 - [ ] Support multi-assembly (comodels dans des assemblies séparées)

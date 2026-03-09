@@ -25,6 +25,7 @@ internal static class CodeEmitter
 
         EmitInfrastructure(sb, model);
         EmitClassicalFields(sb, model);
+        EmitDefaultFields(sb, model);
         EmitDelegations(sb, model);
         EmitRelations(sb, model);
         EmitComputedFields(sb, model);
@@ -57,6 +58,47 @@ internal static class CodeEmitter
     {
         foreach (var f in model.ClassicallyInheritedFields)
             EmitStoredProperty(sb, f, "Inherited (classical)");
+    }
+
+    // ── [Default] partial fields ───────────────────────────────────────────
+
+    private static void EmitDefaultFields(StringBuilder sb, ResolvedModel model)
+    {
+        var fields = model.OwnFields
+            .Where(f => f.DefaultMethod != null && f.IsPartialProperty)
+            .ToList();
+
+        foreach (var f in fields)
+        {
+            var nullable  = f.IsNullable ? "?" : "";
+            var bf        = $"_{LowerFirst(f.PropertyName)}_backing";
+            var defaulted = $"_{LowerFirst(f.PropertyName)}_defaulted";
+
+            sb.AppendLine($"    // [Default(\"{f.DefaultMethod}\")] — lazy initialisation via méthode");
+            sb.AppendLine($"    private {f.TypeName}{nullable} {bf} = default!;");
+            sb.AppendLine($"    private bool {defaulted};");
+            sb.AppendLine($"    public partial {f.TypeName}{nullable} {f.PropertyName}");
+            sb.AppendLine("    {");
+            sb.AppendLine("        get");
+            sb.AppendLine("        {");
+            sb.AppendLine($"            if (!{defaulted}) {{ {bf} = {f.DefaultMethod}(); {defaulted} = true; }}");
+            if (f.IsNullable)
+                sb.AppendLine($"            return {bf};");
+            else
+                sb.AppendLine($"            return {bf}!;");
+            sb.AppendLine("        }");
+            sb.AppendLine("        set");
+            sb.AppendLine("        {");
+            sb.AppendLine($"            if ({defaulted} && System.Collections.Generic.EqualityComparer<{f.TypeName}{nullable}>.Default.Equals({bf}, value)) return;");
+            sb.AppendLine($"            {bf} = value;");
+            sb.AppendLine($"            {defaulted} = true;");
+            sb.AppendLine($"            OnPropertyChanged(nameof({f.PropertyName}));");
+            sb.AppendLine($"            __InvalidateDependents(nameof({f.PropertyName}));");
+            sb.AppendLine($"            __TriggerOnchange(nameof({f.PropertyName}));");
+            sb.AppendLine("        }");
+            sb.AppendLine("    }");
+            sb.AppendLine();
+        }
     }
 
     // ── Delegation ─────────────────────────────────────────────────────────

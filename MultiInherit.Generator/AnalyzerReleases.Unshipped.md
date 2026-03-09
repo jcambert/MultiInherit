@@ -17,5 +17,6 @@ MI0009 | MultiInherit | Error | One2many inverse field not found
 MI0010 | MultiInherit | Error | Relation comodel not found
 MI0011 | MultiInherit | Error | Computed property must be partial
 MI0012 | MultiInherit | Error | Selection field must be a string property
+MI0013 | MultiInherit | Error | Default method not found
 MI0101 | MultiInherit | Warning | Inherited field name conflict
 MI0102 | MultiInherit | Warning | Model in global namespace
