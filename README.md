@@ -457,28 +457,76 @@ public partial class SaleOrder
 
 ## Runtime registry
 
-Every model is automatically registered at startup via `[ModuleInitializer]`:
+### How registration works
+
+Each `[Model]` class gets a `[ModuleInitializer]` method emitted by the generator into its `.g.cs` file.
+The .NET runtime calls **all** `[ModuleInitializer]` methods automatically, in an unspecified order,
+before any user code in the assembly runs — no `Startup`, no DI, no explicit bootstrap required.
+
+```
+Assembly load
+    │
+    ▼  (for each model class, in parallel / unspecified order)
+ResPartner.__RegisterModel_res_partner()   ──► ModelRegistry.Register(meta)
+SaleOrder.__RegisterModel_sale_order()     ──► ModelRegistry.Register(meta)
+SaleOrderLine.__RegisterModel_…()         ──► ModelRegistry.Register(meta)
+    │
+    ▼
+Application code  ──►  ModelRegistry.All() / .Get() / .CreateInstance()
+```
+
+Internally `ModelRegistry` uses two `ConcurrentDictionary<,>` — one keyed by technical name,
+one by CLR type — so lookups are O(1) and thread-safe.
+
+### What is stored per model
+
+Every call to `Register()` stores a `ModelMeta` record:
 
 ```csharp
-// Enumerate all models
+public sealed record ModelMeta(
+    string                   Name,                  // "res.partner"
+    Type                     ClrType,               // typeof(ResPartner)
+    IReadOnlyList<string>    Inherits,              // classical + delegation parents
+    IReadOnlyList<string>?   DelegationInherits,    // [Inherits] parents only
+    IReadOnlyList<string>?   DelegatedPropertyNames // properties forwarded from parent tables
+);
+```
+
+| Field | Classical `[Inherit]` | Delegation `[Inherits]` | Extension `[Inherit]` (same name) |
+|---|---|---|---|
+| `Inherits` | `["res.partner"]` | `["res.partner"]` | `[]` |
+| `DelegationInherits` | `[]` | `["res.partner"]` | `[]` |
+| `DelegatedPropertyNames` | `[]` | `["Name", "Email", …]` | `[]` |
+
+`DelegatedPropertyNames` is used by `ModelDbContext` to call `Ignore()` on those properties so EF Core does not try to create columns for them on the child table.
+
+### API
+
+```csharp
+// Enumerate all registered models
 foreach (var meta in ModelRegistry.All())
     Console.WriteLine($"{meta.Name} → {meta.ClrType.Name}");
 
 // Look up by technical name
 ModelMeta? meta = ModelRegistry.Get("res.partner");
 
-// Look up by CLR type
-ModelMeta? meta = ModelRegistry.Get<ResPartner>();
+// Look up by CLR type (two overloads)
+ModelMeta? meta = ModelRegistry.Get(typeof(ResPartner));
+ModelMeta? meta = ModelRegistry.Get<ResPartner>();          // generic, requires IModel
 
-// Dynamic instantiation
-ResPartner p = ModelRegistry.CreateInstance<ResPartner>("res.partner");
+// Dynamic instantiation (requires a public parameterless constructor)
+object      obj = ModelRegistry.CreateInstance("res.partner");
+ResPartner    p = ModelRegistry.CreateInstance<ResPartner>("res.partner");
 ```
 
-`ModelMeta` exposes:
-- `Name` — technical model name
-- `ClrType` — the CLR type
-- `Inherits` — all parent model names (classical + delegation)
-- `DelegationInherits` — delegation parent names only (`[Inherits]`)
+### Constraints and limitations
+
+- **Single-assembly only** — the generator resolves comodels within the same compilation.
+  Models in separate assemblies are not yet cross-registered at resolve time (see roadmap).
+- **Parameterless constructor required** for `CreateInstance`.
+  All generated models satisfy this automatically.
+- **Registration order is not guaranteed** — do not rely on `ModelRegistry.All()` returning
+  models in declaration order. Use `OrderBy(m => m.Name)` if a stable order is needed.
 
 ---
 
