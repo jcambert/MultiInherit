@@ -11,30 +11,27 @@
     <!-- Prevent accidental per-project version overrides -->
     <CentralPackageVersionOverrideEnabled>false</CentralPackageVersionOverrideEnabled>
   </PropertyGroup>
-
   <ItemGroup Label="Roslyn / Source Generator">
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp"   Version="4.12.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
   </ItemGroup>
-
   <ItemGroup Label="Entity Framework Core">
-    <PackageVersion Include="Microsoft.EntityFrameworkCore"            Version="9.0.4" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.4" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite"     Version="9.0.4" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer"  Version="9.0.4" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design"     Version="9.0.4" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.4" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.4" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.4" />
   </ItemGroup>
-
   <ItemGroup Label="Testing">
-    <PackageVersion Include="Microsoft.NET.Test.Sdk"                              Version="17.13.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces"            Version="4.12.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzer.Testing"             Version="1.1.2"  />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.12.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzer.Testing" Version="1.1.2" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit" Version="1.1.2" />
-    <PackageVersion Include="xunit"                                               Version="2.9.3"  />
-    <PackageVersion Include="xunit.runner.visualstudio"                           Version="3.1.5"  />
-    <PackageVersion Include="xunit.v3"                                            Version="3.2.2"  />
-    <PackageVersion Include="coverlet.collector"                                  Version="6.0.4"  />
-    <PackageVersion Include="Testcontainers.PostgreSql"                           Version="4.10.0" />
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL"               Version="9.0.4"  />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
+    <PackageVersion Include="coverlet.collector" Version="8.0.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.10.0" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
   </ItemGroup>
 </Project>
