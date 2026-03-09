@@ -6,6 +6,15 @@ namespace MultiInherit.Todo.Services;
 
 public class TodoService(IDbContextFactory<TodoDbContext> factory) : ITodoService
 {
+    // Npgsql exige Kind=Utc pour timestamptz.
+    // .Date retourne Kind=Unspecified → on reconstruit avec Kind=Utc.
+    private static DateTime UtcToday =>
+        new(DateTime.UtcNow.Year, DateTime.UtcNow.Month, DateTime.UtcNow.Day, 0, 0, 0, DateTimeKind.Utc);
+
+    // Force Kind=Utc sur une valeur venant de l'UI (MudDatePicker → Kind=Unspecified).
+    private static DateTime? UtcOnly(DateTime? dt) =>
+        dt.HasValue ? DateTime.SpecifyKind(dt.Value, DateTimeKind.Utc) : null;
+
     // ── Tasks ─────────────────────────────────────────────────────────────
 
     public async Task<List<TodoTask>> GetTasksAsync(TaskFilter? filter = null)
@@ -46,7 +55,7 @@ public class TodoService(IDbContextFactory<TodoDbContext> factory) : ITodoServic
 
             if (filter.OverdueOnly)
                 q = q.Where(t => t.DueDate.HasValue
-                              && t.DueDate.Value < DateTime.UtcNow.Date
+                              && t.DueDate.Value < UtcToday
                               && t.Status != "done"
                               && t.Status != "cancelled");
 
@@ -84,7 +93,7 @@ public class TodoService(IDbContextFactory<TodoDbContext> factory) : ITodoServic
             Description      = dto.Description,
             Priority         = dto.Priority,
             Status           = dto.Status,
-            DueDate          = dto.DueDate,
+            DueDate          = UtcOnly(dto.DueDate),
             ProjectId        = dto.ProjectId,
             ParentTaskId     = dto.ParentTaskId,
             EstimatedMinutes = dto.EstimatedMinutes
@@ -112,7 +121,7 @@ public class TodoService(IDbContextFactory<TodoDbContext> factory) : ITodoServic
         task.Description      = dto.Description;
         task.Priority         = dto.Priority;
         task.Status           = dto.Status;
-        task.DueDate          = dto.DueDate;
+        task.DueDate          = UtcOnly(dto.DueDate);
         task.ProjectId        = dto.ProjectId;
         task.ParentTaskId     = dto.ParentTaskId;
         task.EstimatedMinutes = dto.EstimatedMinutes;
@@ -168,7 +177,7 @@ public class TodoService(IDbContextFactory<TodoDbContext> factory) : ITodoServic
         await using var ctx = await factory.CreateDbContextAsync();
         return await ctx.Set<TodoTask>().CountAsync(t =>
             t.DueDate.HasValue
-            && t.DueDate.Value < DateTime.UtcNow.Date
+            && t.DueDate.Value < UtcToday
             && t.Status != "done"
             && t.Status != "cancelled");
     }
@@ -304,7 +313,7 @@ public class TodoService(IDbContextFactory<TodoDbContext> factory) : ITodoServic
 
         var overdue = tasks.Count(t =>
             t.DueDate.HasValue
-            && t.DueDate.Value.Date < DateTime.UtcNow.Date
+            && t.DueDate.Value.Date < UtcToday
             && t.Status != "done"
             && t.Status != "cancelled");
 
@@ -320,7 +329,7 @@ public class TodoService(IDbContextFactory<TodoDbContext> factory) : ITodoServic
         return new TaskStats(
             Total:      tasks.Count,
             Overdue:    overdue,
-            DueToday:   tasks.Count(t => t.DueDate.HasValue && t.DueDate.Value.Date == DateTime.UtcNow.Date),
+            DueToday:   tasks.Count(t => t.DueDate.HasValue && t.DueDate.Value.Date == UtcToday),
             Completed:  tasks.Count(t => t.Status == "done"),
             InProgress: tasks.Count(t => t.Status == "in_progress"),
             Todo:       tasks.Count(t => t.Status == "todo"),

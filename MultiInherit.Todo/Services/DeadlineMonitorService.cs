@@ -50,7 +50,7 @@ public sealed class DeadlineMonitorService(
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        var now   = DateTime.UtcNow.Date;
+        var now   = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, DateTime.UtcNow.Day, 0, 0, 0, DateTimeKind.Utc);
         var tasks = await ctx.Set<TodoTask>()
             .Where(t => t.DueDate.HasValue
                      && t.DueDate.Value < now
