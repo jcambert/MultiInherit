@@ -1,0 +1,18 @@
+<Router AppAssembly="typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Page introuvable</PageTitle>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <MudContainer MaxWidth="MaxWidth.Small" Class="mt-16 text-center">
+                <MudText Typo="Typo.h2" Color="Color.Error">404</MudText>
+                <MudText Typo="Typo.h5" Class="mb-4">Cette page n'existe pas.</MudText>
+                <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary">
+                    Retour au tableau de bord
+                </MudButton>
+            </MudContainer>
+        </LayoutView>
+    </NotFound>
+</Router>

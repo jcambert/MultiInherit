@@ -1,0 +1,110 @@
+@page "/tags"
+@inject ITodoService   TodoSvc
+@inject IDialogService DialogSvc
+@inject ISnackbar      Snackbar
+
+<PageTitle>Étiquettes — TodoList</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Étiquettes</MudText>
+    <MudSpacer />
+    <MudButton StartIcon="@Icons.Material.Filled.Add"
+               Variant="Variant.Filled" Color="Color.Primary"
+               OnClick="OpenCreateDialogAsync">
+        Nouvelle étiquette
+    </MudButton>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" />
+}
+else
+{
+    <MudPaper Elevation="2">
+        <MudTable Items="_tags" Hover Dense>
+            <HeaderContent>
+                <MudTh>Aperçu</MudTh>
+                <MudTh>Label</MudTh>
+                <MudTh>Couleur</MudTh>
+                <MudTh Class="text-right">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <MudChip T="string"
+                             Style="@($"background:{context.Color}33;color:{context.Color};")">
+                        @context.Label
+                    </MudChip>
+                </MudTd>
+                <MudTd>@context.Label</MudTd>
+                <MudTd>
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                        <div style="@($"width:18px;height:18px;border-radius:50%;background:{context.Color};")"></div>
+                        <MudText Typo="Typo.caption">@context.Color</MudText>
+                    </MudStack>
+                </MudTd>
+                <MudTd Class="text-right">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   OnClick="@(() => OpenEditDialogAsync(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small" Color="Color.Error"
+                                   OnClick="@(() => DeleteTagAsync(context.Id))" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Class="py-4 text-center mud-text-secondary">
+                    Aucune étiquette. Créez-en une ci-dessus.
+                </MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudPaper>
+}
+
+@code {
+    private bool          _loading = true;
+    private List<TodoTag> _tags    = [];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _tags    = await TodoSvc.GetTagsAsync();
+        _loading = false;
+    }
+
+    private async Task OpenCreateDialogAsync()
+    {
+        var dialog = await DialogSvc.ShowAsync<TagFormDialog>(
+            "Nouvelle étiquette",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        if (!(await dialog.Result)!.Canceled) await LoadAsync();
+    }
+
+    private async Task OpenEditDialogAsync(TodoTag tag)
+    {
+        var param = new DialogParameters<TagFormDialog>
+        {
+            { x => x.ExistingTag, tag }
+        };
+        var dialog = await DialogSvc.ShowAsync<TagFormDialog>(
+            "Modifier l'étiquette", param,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        if (!(await dialog.Result)!.Canceled) await LoadAsync();
+    }
+
+    private async Task DeleteTagAsync(int id)
+    {
+        var confirm = await DialogSvc.ShowMessageBox(
+            "Supprimer l'étiquette",
+            "L'étiquette sera retirée de toutes les tâches. Confirmer ?",
+            yesText: "Supprimer", cancelText: "Annuler");
+        if (confirm == true)
+        {
+            await TodoSvc.DeleteTagAsync(id);
+            Snackbar.Add("Étiquette supprimée.", Severity.Info);
+            await LoadAsync();
+        }
+    }
+}

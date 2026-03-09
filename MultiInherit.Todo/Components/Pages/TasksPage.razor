@@ -1,0 +1,301 @@
+@page "/tasks"
+@inject ITodoService      TodoSvc
+@inject IDialogService    DialogSvc
+@inject ISnackbar         Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Tâches — TodoList</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Tâches</MudText>
+    <MudSpacer />
+    <MudButton StartIcon="@Icons.Material.Filled.Add"
+               Variant="Variant.Filled"
+               Color="Color.Primary"
+               OnClick="OpenCreateDialogAsync">
+        Nouvelle tâche
+    </MudButton>
+</MudStack>
+
+<!-- ── Panneau de filtres ────────────────────────────────────────────────── -->
+<MudExpansionPanel Text="Filtres" Icon="@Icons.Material.Filled.FilterList"
+                   Class="mb-4" Elevation="1">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6" md="3">
+            <MudTextField @bind-Value="_search"
+                          Label="Recherche"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Variant="Variant.Outlined"
+                          DebounceInterval="400"
+                          OnDebounceIntervalElapsed="ApplyFiltersAsync" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="int?" @bind-Value="_filterProjectId" Label="Projet"
+                       Variant="Variant.Outlined" Clearable>
+                @foreach (var p in _projects)
+                {
+                    <MudSelectItem Value="(int?)p.Id">@p.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudSelect T="string?" @bind-Value="_filterStatus" Label="Statut"
+                       Variant="Variant.Outlined" Clearable>
+                <MudSelectItem Value="@((string?)"todo")">À faire</MudSelectItem>
+                <MudSelectItem Value="@((string?)"in_progress")">En cours</MudSelectItem>
+                <MudSelectItem Value="@((string?)"done")">Terminée</MudSelectItem>
+                <MudSelectItem Value="@((string?)"cancelled")">Annulée</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudSelect T="string?" @bind-Value="_filterPriority" Label="Priorité"
+                       Variant="Variant.Outlined" Clearable>
+                <MudSelectItem Value="@((string?)"low")">Faible</MudSelectItem>
+                <MudSelectItem Value="@((string?)"normal")">Normale</MudSelectItem>
+                <MudSelectItem Value="@((string?)"high")">Haute</MudSelectItem>
+                <MudSelectItem Value="@((string?)"urgent")">Urgente</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudSelect T="int?" @bind-Value="_filterTagId" Label="Étiquette"
+                       Variant="Variant.Outlined" Clearable>
+                @foreach (var t in _tags)
+                {
+                    <MudSelectItem Value="(int?)t.Id">@t.Label</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" Class="d-flex gap-2 align-center">
+            <MudCheckBox @bind-Value="_showCompleted" Label="Afficher les terminées" />
+            <MudCheckBox @bind-Value="_showCancelled" Label="Afficher les annulées" />
+            <MudButton Variant="Variant.Outlined" OnClick="ApplyFiltersAsync">Filtrer</MudButton>
+            <MudButton Variant="Variant.Text"     OnClick="ResetFilters">Réinitialiser</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudExpansionPanel>
+
+<!-- ── Grille de données ─────────────────────────────────────────────────── -->
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" />
+}
+else
+{
+    <MudPaper Elevation="2">
+        <MudDataGrid T="TodoTask"
+                     Items="_tasks"
+                     SortMode="SortMode.Multiple"
+                     Filterable="false"
+                     Hover
+                     Dense
+                     RowClass="cursor-pointer"
+                     RowClassFunc="@GetRowClass">
+            <Columns>
+                <PropertyColumn Property="t => t.Title" Title="Titre">
+                    <CellTemplate>
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                            <MudText>
+                                <a href="/tasks/@context.Item.Id" style="text-decoration:none;color:inherit;">
+                                    @context.Item.Title
+                                </a>
+                            </MudText>
+                            @if (context.Item.IsOverdue)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Error"
+                                         Icon="@Icons.Material.Filled.Warning">
+                                    Retard
+                                </MudChip>
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </PropertyColumn>
+
+                <TemplateColumn Title="Priorité" SortBy="@(t => t.Priority)">
+                    <CellTemplate>
+                        <PriorityChip Priority="@context.Item.Priority" />
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn Title="Statut" SortBy="@(t => t.Status)">
+                    <CellTemplate>
+                        <StatusChip Status="@context.Item.Status" />
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn Title="Projet" SortBy="@(t => t.Project?.Name ?? "")">
+                    <CellTemplate>
+                        @if (context.Item.Project != null)
+                        {
+                            <MudChip T="string" Size="Size.Small"
+                                     Style="@($"background-color:{context.Item.Project.Color}22;color:{context.Item.Project.Color};")">
+                                @context.Item.Project.Name
+                            </MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn Title="Étiquettes">
+                    <CellTemplate>
+                        @foreach (var tag in context.Item.Tags.Take(3))
+                        {
+                            <MudChip T="string" Size="Size.Small"
+                                     Style="@($"background:{tag.Color}33;color:{tag.Color};")">
+                                @tag.Label
+                            </MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <PropertyColumn Property="t => t.DueDate" Title="Échéance" Format="dd/MM/yyyy" />
+
+                <TemplateColumn Title="Actions" CellClass="d-flex justify-end">
+                    <CellTemplate>
+                        @if (context.Item.Status != "done")
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                                           Size="Size.Small" Color="Color.Success"
+                                           Title="Marquer terminée"
+                                           OnClick="@(() => CompleteTaskAsync(context.Item.Id))" />
+                        }
+                        else
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                           Size="Size.Small" Color="Color.Warning"
+                                           Title="Réouvrir"
+                                           OnClick="@(() => ReopenTaskAsync(context.Item.Id))" />
+                        }
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       Title="Modifier"
+                                       OnClick="@(() => OpenEditDialogAsync(context.Item))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small" Color="Color.Error"
+                                       Title="Supprimer"
+                                       OnClick="@(() => DeleteTaskAsync(context.Item.Id))" />
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <NoRecordsContent>
+                <MudText Class="py-4 text-center mud-text-secondary">
+                    Aucune tâche correspondant aux filtres.
+                </MudText>
+            </NoRecordsContent>
+            <PagerContent>
+                <MudDataGridPager T="TodoTask" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "filter")]   private string? _qFilter   { get; set; }
+    [SupplyParameterFromQuery(Name = "status")]   private string? _qStatus   { get; set; }
+
+    private bool   _loading         = true;
+    private string? _search;
+    private int?   _filterProjectId;
+    private string? _filterStatus;
+    private string? _filterPriority;
+    private int?   _filterTagId;
+    private bool   _showCompleted   = true;
+    private bool   _showCancelled   = false;
+
+    private List<TodoTask>    _tasks    = [];
+    private List<TodoProject> _projects = [];
+    private List<TodoTag>     _tags     = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _projects = await TodoSvc.GetProjectsAsync();
+        _tags     = await TodoSvc.GetTagsAsync();
+
+        // Appliquer les query-string params
+        if (_qFilter == "overdue")  { /* OverdueOnly géré en appliquant le filtre */ }
+        if (_qStatus != null)       _filterStatus = _qStatus;
+
+        await ApplyFiltersAsync();
+    }
+
+    private async Task ApplyFiltersAsync()
+    {
+        _loading = true;
+        var filter = new TaskFilter(
+            ProjectId:     _filterProjectId,
+            Status:        _filterStatus,
+            Priority:      _filterPriority,
+            TagId:         _filterTagId,
+            Search:        _search,
+            ShowCompleted: _showCompleted,
+            ShowCancelled: _showCancelled,
+            OverdueOnly:   _qFilter == "overdue");
+        _tasks   = await TodoSvc.GetTasksAsync(filter);
+        _loading = false;
+    }
+
+    private void ResetFilters()
+    {
+        _search = null; _filterProjectId = null; _filterStatus = null;
+        _filterPriority = null; _filterTagId = null;
+        _showCompleted = true; _showCancelled = false;
+        _ = ApplyFiltersAsync();
+    }
+
+    private async Task OpenCreateDialogAsync()
+    {
+        var param = new DialogParameters<TaskFormDialog>
+        {
+            { x => x.Projects, _projects },
+            { x => x.Tags,     _tags }
+        };
+        var dialog = await DialogSvc.ShowAsync<TaskFormDialog>("Nouvelle tâche", param,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dialog.Result;
+        if (!result!.Canceled) await ApplyFiltersAsync();
+    }
+
+    private async Task OpenEditDialogAsync(TodoTask task)
+    {
+        var param = new DialogParameters<TaskFormDialog>
+        {
+            { x => x.ExistingTask, task },
+            { x => x.Projects,     _projects },
+            { x => x.Tags,         _tags }
+        };
+        var dialog = await DialogSvc.ShowAsync<TaskFormDialog>("Modifier la tâche", param,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dialog.Result;
+        if (!result!.Canceled) await ApplyFiltersAsync();
+    }
+
+    private async Task CompleteTaskAsync(int id)
+    {
+        await TodoSvc.CompleteTaskAsync(id);
+        Snackbar.Add("Tâche marquée terminée.", Severity.Success);
+        await ApplyFiltersAsync();
+    }
+
+    private async Task ReopenTaskAsync(int id)
+    {
+        await TodoSvc.ReopenTaskAsync(id);
+        Snackbar.Add("Tâche réouverte.", Severity.Info);
+        await ApplyFiltersAsync();
+    }
+
+    private async Task DeleteTaskAsync(int id)
+    {
+        var confirm = await DialogSvc.ShowMessageBox(
+            "Supprimer la tâche",
+            "Cette action est irréversible. Confirmer ?",
+            yesText: "Supprimer", cancelText: "Annuler");
+        if (confirm == true)
+        {
+            await TodoSvc.DeleteTaskAsync(id);
+            Snackbar.Add("Tâche supprimée.", Severity.Info);
+            await ApplyFiltersAsync();
+        }
+    }
+
+    private string GetRowClass(TodoTask task, int _)
+        => task.IsOverdue ? "row-overdue" : string.Empty;
+}

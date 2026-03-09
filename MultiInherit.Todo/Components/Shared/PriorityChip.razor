@@ -1,0 +1,30 @@
+@* Chip coloré selon la priorité d'une tâche *@
+
+<MudChip T="string"
+         Size="@Size"
+         Color="@_color"
+         Icon="@_icon"
+         Variant="Variant.Filled">
+    @_label
+</MudChip>
+
+@code {
+    [Parameter] public string   Priority { get; set; } = "normal";
+    [Parameter] public Size     Size     { get; set; } = Size.Small;
+
+    private Color  _color;
+    private string _icon  = string.Empty;
+    private string _label = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        (_color, _icon, _label) = Priority switch
+        {
+            "urgent" => (Color.Error,   Icons.Material.Filled.PriorityHigh,    "Urgente"),
+            "high"   => (Color.Warning, Icons.Material.Filled.KeyboardArrowUp,  "Haute"),
+            "normal" => (Color.Info,    Icons.Material.Filled.HorizontalRule,   "Normale"),
+            "low"    => (Color.Default, Icons.Material.Filled.KeyboardArrowDown,"Faible"),
+            _        => (Color.Default, Icons.Material.Filled.HorizontalRule,   Priority)
+        };
+    }
+}

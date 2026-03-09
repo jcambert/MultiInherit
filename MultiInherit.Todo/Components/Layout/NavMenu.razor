@@ -1,0 +1,48 @@
+@inject NavigationManager Nav
+
+<MudNavMenu>
+    <MudText Typo="Typo.overline" Class="px-4 pt-4 pb-1 mud-text-secondary">
+        Navigation
+    </MudText>
+
+    <MudNavLink Href="/"
+                Match="NavLinkMatch.All"
+                Icon="@Icons.Material.Filled.Dashboard">
+        Tableau de bord
+    </MudNavLink>
+
+    <MudNavLink Href="/tasks"
+                Match="NavLinkMatch.Prefix"
+                Icon="@Icons.Material.Filled.CheckBox">
+        Toutes les tâches
+    </MudNavLink>
+
+    <MudNavLink Href="/tasks?filter=overdue"
+                Icon="@Icons.Material.Filled.Warning"
+                IconColor="Color.Error">
+        En retard
+    </MudNavLink>
+
+    <MudNavLink Href="/tasks?filter=today"
+                Icon="@Icons.Material.Filled.Today">
+        Aujourd'hui
+    </MudNavLink>
+
+    <MudDivider Class="my-2" />
+
+    <MudText Typo="Typo.overline" Class="px-4 pt-2 pb-1 mud-text-secondary">
+        Organisation
+    </MudText>
+
+    <MudNavLink Href="/projects"
+                Match="NavLinkMatch.Prefix"
+                Icon="@Icons.Material.Filled.Folder">
+        Projets
+    </MudNavLink>
+
+    <MudNavLink Href="/tags"
+                Match="NavLinkMatch.Prefix"
+                Icon="@Icons.Material.Filled.Label">
+        Étiquettes
+    </MudNavLink>
+</MudNavMenu>

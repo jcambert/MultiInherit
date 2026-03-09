@@ -1,0 +1,28 @@
+@* Carte de statistique pour le dashboard *@
+
+<MudPaper Elevation="2" Class="pa-4" Style="cursor:pointer;" @onclick="Navigate">
+    <MudStack Row AlignItems="AlignItems.Center" Spacing="3">
+        <MudAvatar Color="@Color" Variant="Variant.Filled" Size="Size.Large">
+            <MudIcon Icon="@Icon" />
+        </MudAvatar>
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.h4">@Value</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">@Label</MudText>
+        </MudStack>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public string Icon  { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Value { get; set; } = string.Empty;
+    [Parameter]                  public Color  Color { get; set; } = Color.Primary;
+    [Parameter]                  public string? Href { get; set; }
+
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+
+    private void Navigate()
+    {
+        if (!string.IsNullOrEmpty(Href)) Nav.NavigateTo(Href);
+    }
+}

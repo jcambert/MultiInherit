@@ -1,0 +1,13 @@
+@* Ligne label/valeur pour le panneau de détail *@
+
+<MudStack Row AlignItems="AlignItems.Start" Spacing="2">
+    <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="min-width:100px;">
+        @Label
+    </MudText>
+    @ChildContent
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public string          Label        { get; set; } = string.Empty;
+    [Parameter]                  public RenderFragment? ChildContent { get; set; }
+}

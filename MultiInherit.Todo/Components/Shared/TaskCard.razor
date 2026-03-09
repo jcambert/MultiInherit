@@ -1,0 +1,64 @@
+@* Carte compacte pour une tâche (utilisée dans Dashboard) *@
+
+<MudPaper Elevation="0"
+          Class="pa-3 mb-2 cursor-pointer"
+          Style="border:1px solid var(--mud-palette-divider);border-radius:8px;">
+    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+        <MudStack Spacing="0" Style="flex:1;min-width:0;">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Style="@_titleStyle">
+                    <a href="/tasks/@Task.Id" style="text-decoration:none;color:inherit;">
+                        @Task.Title
+                    </a>
+                </MudText>
+                @if (Task.IsOverdue)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Warning"
+                             Color="Color.Error" Size="Size.Small" />
+                }
+            </MudStack>
+            <MudStack Row Spacing="1" Class="mt-1">
+                <PriorityChip Priority="@Task.Priority" />
+                @if (Task.Project != null)
+                {
+                    <MudChip T="string" Size="Size.Small"
+                             Style="@($"background:{Task.Project.Color}22;color:{Task.Project.Color};")">
+                        @Task.Project.Name
+                    </MudChip>
+                }
+                @if (Task.DueDate.HasValue)
+                {
+                    <MudText Typo="Typo.caption"
+                             Color="@(Task.IsOverdue ? Color.Error : Color.Default)">
+                        @Task.DueDate.Value.ToString("dd/MM")
+                    </MudText>
+                }
+            </MudStack>
+        </MudStack>
+
+        @if (Task.Status != "done")
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                           Size="Size.Small" Color="Color.Success"
+                           Title="Terminer"
+                           OnClick="@CompleteAsync" />
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public TodoTask Task     { get; set; } = null!;
+    [Parameter]                  public EventCallback OnAction { get; set; }
+
+    [Inject] private ITodoService TodoSvc { get; set; } = null!;
+
+    private string _titleStyle => Task.Status == "done"
+        ? "text-decoration:line-through;opacity:.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+        : "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+
+    private async Task CompleteAsync()
+    {
+        await TodoSvc.CompleteTaskAsync(Task.Id);
+        await OnAction.InvokeAsync();
+    }
+}

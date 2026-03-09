@@ -1,0 +1,325 @@
+@page "/tasks/{Id:int}"
+@inject ITodoService   TodoSvc
+@inject IDialogService DialogSvc
+@inject ISnackbar      Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>@(_task?.Title ?? "Tâche") — TodoList</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" />
+}
+else if (_task == null)
+{
+    <MudAlert Severity="Severity.Error">Tâche introuvable (Id = @Id).</MudAlert>
+}
+else
+{
+    <!-- Fil d'Ariane -->
+    <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
+
+    <MudGrid Spacing="3">
+        <!-- ── Détail principal ──────────────────────────────────────────── -->
+        <MudItem xs="12" md="8">
+            <MudPaper Elevation="2" Class="pa-6">
+                <MudStack Row AlignItems="AlignItems.Start" Spacing="2" Class="mb-4">
+                    <MudStack Spacing="1" Style="flex:1">
+                        <MudText Typo="Typo.h5">@_task.Title</MudText>
+                        @if (_task.Project != null)
+                        {
+                            <MudChip T="string" Size="Size.Small"
+                                     Style="@($"background-color:{_task.Project.Color}22;color:{_task.Project.Color};")">
+                                <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="mr-1" />
+                                @_task.Project.Name
+                            </MudChip>
+                        }
+                    </MudStack>
+                    <MudStack Row Spacing="1">
+                        <MudButton StartIcon="@Icons.Material.Filled.Edit"
+                                   Variant="Variant.Outlined" Size="Size.Small"
+                                   OnClick="OpenEditDialogAsync">
+                            Modifier
+                        </MudButton>
+                        @if (_task.Status != "done")
+                        {
+                            <MudButton StartIcon="@Icons.Material.Filled.CheckCircle"
+                                       Variant="Variant.Filled" Color="Color.Success" Size="Size.Small"
+                                       OnClick="CompleteTaskAsync">
+                                Terminer
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton StartIcon="@Icons.Material.Filled.Refresh"
+                                       Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small"
+                                       OnClick="ReopenTaskAsync">
+                                Réouvrir
+                            </MudButton>
+                        }
+                    </MudStack>
+                </MudStack>
+
+                <!-- Description -->
+                @if (!string.IsNullOrEmpty(_task.Description))
+                {
+                    <MudText Class="mb-4" Style="white-space:pre-wrap;">@_task.Description</MudText>
+                    <MudDivider Class="mb-4" />
+                }
+
+                <!-- Sous-tâches -->
+                <MudText Typo="Typo.h6" Class="mb-2">
+                    Sous-tâches (@_task.Subtasks.Count)
+                </MudText>
+
+                @foreach (var sub in _task.Subtasks)
+                {
+                    <MudPaper Elevation="0" Class="pa-2 mb-1" Style="border:1px solid var(--mud-palette-divider)">
+                        <MudStack Row AlignItems="AlignItems.Center">
+                            <MudCheckBox Value="@(sub.Status == "done")"
+                                         ValueChanged="@((bool v) => ToggleSubtaskAsync(sub, v))"
+                                         Color="Color.Success" />
+                            <MudText Style="@(sub.Status == "done" ? "text-decoration:line-through;opacity:.6" : "")">
+                                <a href="/tasks/@sub.Id" style="text-decoration:none;color:inherit;">@sub.Title</a>
+                            </MudText>
+                            <MudSpacer />
+                            <PriorityChip Priority="@sub.Priority" />
+                        </MudStack>
+                    </MudPaper>
+                }
+
+                <MudButton StartIcon="@Icons.Material.Filled.Add"
+                           Variant="Variant.Text" Color="Color.Primary" Class="mt-2"
+                           OnClick="OpenCreateSubtaskDialogAsync">
+                    Ajouter une sous-tâche
+                </MudButton>
+
+                <!-- Commentaires -->
+                <MudDivider Class="my-4" />
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    Commentaires (@_comments.Count)
+                </MudText>
+
+                @foreach (var comment in _comments)
+                {
+                    <MudPaper Elevation="0" Class="pa-3 mb-2"
+                              Style="background:var(--mud-palette-background-grey);border-radius:8px;">
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-1">
+                            <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                @comment.Author[0]
+                            </MudAvatar>
+                            <MudText Typo="Typo.subtitle2">@comment.Author</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary ml-2">
+                                @comment.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </MudText>
+                            <MudSpacer />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Size="Size.Small" Color="Color.Error"
+                                           OnClick="@(() => DeleteCommentAsync(comment.Id))" />
+                        </MudStack>
+                        <MudText Style="white-space:pre-wrap;">@comment.Content</MudText>
+                    </MudPaper>
+                }
+
+                <!-- Nouveau commentaire -->
+                <MudStack Row AlignItems="AlignItems.End" Spacing="2" Class="mt-3">
+                    <MudTextField @bind-Value="_newComment"
+                                  Label="Ajouter un commentaire…"
+                                  Lines="2"
+                                  Variant="Variant.Outlined"
+                                  Style="flex:1" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               Disabled="@string.IsNullOrWhiteSpace(_newComment)"
+                               OnClick="AddCommentAsync">
+                        Envoyer
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <!-- ── Panneau latéral ────────────────────────────────────────────── -->
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-3">Informations</MudText>
+
+                <MudStack Spacing="2">
+                    <InfoRow Label="Priorité">
+                        <PriorityChip Priority="@_task.Priority" />
+                    </InfoRow>
+                    <InfoRow Label="Statut">
+                        <StatusChip Status="@_task.Status" />
+                    </InfoRow>
+                    @if (_task.DueDate.HasValue)
+                    {
+                        <InfoRow Label="Échéance">
+                            <MudText Color="@(_task.IsOverdue ? Color.Error : Color.Default)">
+                                @_task.DueDate.Value.ToString("dd/MM/yyyy")
+                                @if (_task.IsOverdue)
+                                {
+                                    <MudText Inline Color="Color.Error"> (en retard)</MudText>
+                                }
+                            </MudText>
+                        </InfoRow>
+                    }
+                    @if (_task.CompletedAt.HasValue)
+                    {
+                        <InfoRow Label="Terminée le">
+                            <MudText>@_task.CompletedAt.Value.ToLocalTime().ToString("dd/MM/yyyy")</MudText>
+                        </InfoRow>
+                    }
+                    @if (_task.EstimatedMinutes.HasValue)
+                    {
+                        <InfoRow Label="Estimation">
+                            <MudText>@FormatMinutes(_task.EstimatedMinutes.Value)</MudText>
+                        </InfoRow>
+                    }
+                    @if (_task.ActualMinutes.HasValue)
+                    {
+                        <InfoRow Label="Temps réel">
+                            <MudText>@FormatMinutes(_task.ActualMinutes.Value)</MudText>
+                        </InfoRow>
+                    }
+                    @if (_task.Tags.Any())
+                    {
+                        <InfoRow Label="Étiquettes">
+                            <MudStack Row Wrap="Wrap.Wrap" Spacing="1">
+                                @foreach (var tag in _task.Tags)
+                                {
+                                    <MudChip T="string" Size="Size.Small"
+                                             Style="@($"background:{tag.Color}33;color:{tag.Color};")">
+                                        @tag.Label
+                                    </MudChip>
+                                }
+                            </MudStack>
+                        </InfoRow>
+                    }
+                    @if (_task.ParentTask != null)
+                    {
+                        <InfoRow Label="Tâche parente">
+                            <MudLink Href="@($"/tasks/{_task.ParentTask.Id}")">
+                                @_task.ParentTask.Title
+                            </MudLink>
+                        </InfoRow>
+                    }
+                </MudStack>
+
+                <MudDivider Class="my-3" />
+
+                <MudButton StartIcon="@Icons.Material.Filled.Delete"
+                           Color="Color.Error" Variant="Variant.Outlined"
+                           FullWidth OnClick="DeleteTaskAsync">
+                    Supprimer cette tâche
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool            _loading    = true;
+    private TodoTask?       _task;
+    private List<TodoComment> _comments = [];
+    private string?         _newComment;
+    private List<BreadcrumbItem> _breadcrumbs = [];
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading  = true;
+        _task     = await TodoSvc.GetTaskByIdAsync(Id);
+        _comments = _task != null ? await TodoSvc.GetCommentsAsync(Id) : [];
+
+        _breadcrumbs =
+        [
+            new BreadcrumbItem("Tâches", href: "/tasks"),
+            new BreadcrumbItem(_task?.Title ?? "...", href: null, disabled: true)
+        ];
+        _loading = false;
+    }
+
+    private async Task OpenEditDialogAsync()
+    {
+        var projects = await TodoSvc.GetProjectsAsync();
+        var tags     = await TodoSvc.GetTagsAsync();
+        var param = new DialogParameters<TaskFormDialog>
+        {
+            { x => x.ExistingTask, _task },
+            { x => x.Projects,     projects },
+            { x => x.Tags,         tags }
+        };
+        var dialog = await DialogSvc.ShowAsync<TaskFormDialog>("Modifier la tâche", param,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dialog.Result;
+        if (!result!.Canceled) await LoadAsync();
+    }
+
+    private async Task OpenCreateSubtaskDialogAsync()
+    {
+        var projects = await TodoSvc.GetProjectsAsync();
+        var tags     = await TodoSvc.GetTagsAsync();
+        var param = new DialogParameters<TaskFormDialog>
+        {
+            { x => x.ParentTaskId, Id },
+            { x => x.Projects,     projects },
+            { x => x.Tags,         tags }
+        };
+        var dialog = await DialogSvc.ShowAsync<TaskFormDialog>("Nouvelle sous-tâche", param,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dialog.Result;
+        if (!result!.Canceled) await LoadAsync();
+    }
+
+    private async Task CompleteTaskAsync()
+    {
+        await TodoSvc.CompleteTaskAsync(Id);
+        Snackbar.Add("Tâche terminée.", Severity.Success);
+        await LoadAsync();
+    }
+
+    private async Task ReopenTaskAsync()
+    {
+        await TodoSvc.ReopenTaskAsync(Id);
+        Snackbar.Add("Tâche réouverte.", Severity.Info);
+        await LoadAsync();
+    }
+
+    private async Task ToggleSubtaskAsync(TodoTask sub, bool done)
+    {
+        if (done) await TodoSvc.CompleteTaskAsync(sub.Id);
+        else      await TodoSvc.ReopenTaskAsync(sub.Id);
+        await LoadAsync();
+    }
+
+    private async Task AddCommentAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newComment)) return;
+        await TodoSvc.AddCommentAsync(Id, _newComment);
+        _newComment = null;
+        _comments   = await TodoSvc.GetCommentsAsync(Id);
+    }
+
+    private async Task DeleteCommentAsync(int commentId)
+    {
+        await TodoSvc.DeleteCommentAsync(commentId);
+        _comments = await TodoSvc.GetCommentsAsync(Id);
+    }
+
+    private async Task DeleteTaskAsync()
+    {
+        var confirm = await DialogSvc.ShowMessageBox(
+            "Supprimer la tâche",
+            "Cette action supprime aussi les sous-tâches et commentaires. Confirmer ?",
+            yesText: "Supprimer", cancelText: "Annuler");
+        if (confirm == true)
+        {
+            await TodoSvc.DeleteTaskAsync(Id);
+            Nav.NavigateTo("/tasks");
+        }
+    }
+
+    private static string FormatMinutes(int min)
+        => min >= 60 ? $"{min / 60}h{min % 60:D2}" : $"{min} min";
+}

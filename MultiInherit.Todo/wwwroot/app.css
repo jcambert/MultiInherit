@@ -1,0 +1,58 @@
+/* ── Variables ───────────────────────────────────────────────────────────── */
+:root {
+    --todo-border-radius: 8px;
+}
+
+/* ── Layout global ───────────────────────────────────────────────────────── */
+html, body {
+    height: 100%;
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+}
+
+/* ── Ligne de tâche en retard dans le DataGrid ───────────────────────────── */
+.row-overdue {
+    background-color: rgba(198, 40, 40, 0.05) !important;
+    border-left: 3px solid #c62828;
+}
+
+/* ── Curseur pointer pour les lignes cliquables ──────────────────────────── */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* ── Liens discrets ──────────────────────────────────────────────────────── */
+a.plain-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+a.plain-link:hover {
+    text-decoration: underline;
+}
+
+/* ── Cards de projet avec couleur ────────────────────────────────────────── */
+.project-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.project-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,.12) !important;
+}
+
+/* ── Scrollbar personnalisée ─────────────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,.2);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,.35);
+}

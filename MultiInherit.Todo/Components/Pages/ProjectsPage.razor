@@ -1,0 +1,152 @@
+@page "/projects"
+@inject ITodoService   TodoSvc
+@inject IDialogService DialogSvc
+@inject ISnackbar      Snackbar
+
+<PageTitle>Projets — TodoList</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Projets</MudText>
+    <MudSpacer />
+    <MudSwitch @bind-Value="_showArchived" Label="Afficher les archivés" Color="Color.Primary" />
+    <MudButton StartIcon="@Icons.Material.Filled.Add"
+               Variant="Variant.Filled" Color="Color.Primary"
+               OnClick="OpenCreateDialogAsync">
+        Nouveau projet
+    </MudButton>
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" />
+}
+else
+{
+    <MudGrid Spacing="3">
+        @foreach (var project in _projects)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Elevation="2" Style="@($"border-top: 4px solid {project.Color};")">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudStack Row AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@Icons.Material.Filled.Folder"
+                                         Style="@($"color:{project.Color};")" />
+                                <MudText Typo="Typo.h6" Class="ml-2">@project.Name</MudText>
+                                <MudSpacer />
+                                @if (project.IsArchived)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Default">
+                                        Archivé
+                                    </MudChip>
+                                }
+                            </MudStack>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+
+                    @if (!string.IsNullOrEmpty(project.Description))
+                    {
+                        <MudCardContent>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                @project.Description
+                            </MudText>
+                        </MudCardContent>
+                    }
+
+                    <MudCardContent>
+                        <MudText Typo="Typo.body2">
+                            <strong>@(_taskCounts.GetValueOrDefault(project.Id, 0))</strong>
+                            tâche(s) active(s)
+                        </MudText>
+                    </MudCardContent>
+
+                    <MudCardActions>
+                        <MudButton Href="@($"/tasks?project={project.Id}")"
+                                   Size="Size.Small" Variant="Variant.Text">
+                            Voir les tâches
+                        </MudButton>
+                        <MudSpacer />
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       OnClick="@(() => OpenEditDialogAsync(project))" />
+                        <MudIconButton Icon="@(project.IsArchived
+                                               ? Icons.Material.Filled.Unarchive
+                                               : Icons.Material.Filled.Archive)"
+                                       Size="Size.Small"
+                                       Title="@(project.IsArchived ? "Désarchiver" : "Archiver")"
+                                       OnClick="@(() => ToggleArchiveAsync(project))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small" Color="Color.Error"
+                                       OnClick="@(() => DeleteProjectAsync(project.Id))" />
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+
+        @if (_projects.Count == 0)
+        {
+            <MudItem xs="12">
+                <MudAlert Severity="Severity.Info">
+                    Aucun projet. Créez votre premier projet ci-dessus.
+                </MudAlert>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private bool   _loading      = true;
+    private bool   _showArchived;
+    private List<TodoProject>   _projects   = [];
+    private Dictionary<int,int> _taskCounts = [];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading     = true;
+        _projects    = await TodoSvc.GetProjectsAsync(_showArchived);
+        _taskCounts  = await TodoSvc.GetTaskCountByProjectAsync();
+        _loading     = false;
+    }
+
+    private async Task OpenCreateDialogAsync()
+    {
+        var dialog = await DialogSvc.ShowAsync<ProjectFormDialog>(
+            "Nouveau projet",
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (!(await dialog.Result)!.Canceled) await LoadAsync();
+    }
+
+    private async Task OpenEditDialogAsync(TodoProject project)
+    {
+        var param = new DialogParameters<ProjectFormDialog>
+        {
+            { x => x.ExistingProject, project }
+        };
+        var dialog = await DialogSvc.ShowAsync<ProjectFormDialog>(
+            "Modifier le projet", param,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (!(await dialog.Result)!.Canceled) await LoadAsync();
+    }
+
+    private async Task ToggleArchiveAsync(TodoProject project)
+    {
+        await TodoSvc.ArchiveProjectAsync(project.Id, !project.IsArchived);
+        await LoadAsync();
+    }
+
+    private async Task DeleteProjectAsync(int id)
+    {
+        var confirm = await DialogSvc.ShowMessageBox(
+            "Supprimer le projet",
+            "Les tâches associées perdront leur projet (FK SetNull). Confirmer ?",
+            yesText: "Supprimer", cancelText: "Annuler");
+        if (confirm == true)
+        {
+            await TodoSvc.DeleteProjectAsync(id);
+            Snackbar.Add("Projet supprimé.", Severity.Info);
+            await LoadAsync();
+        }
+    }
+}

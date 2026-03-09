@@ -1,0 +1,96 @@
+@inherits LayoutComponentBase
+@inject TodoEventService EventService
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       Edge="Edge.Start"
+                       OnClick="@ToggleDrawer" />
+        <MudText Typo="Typo.h6" Class="ml-2">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="mr-1" />
+            TodoList
+        </MudText>
+        <MudSpacer />
+        @if (_overdueCount > 0)
+        {
+            <MudBadge Content="@_overdueCount" Color="Color.Error" Overlap="true" Class="mr-4">
+                <MudIconButton Icon="@Icons.Material.Filled.Warning"
+                               Color="Color.Warning"
+                               Href="/tasks?filter=overdue"
+                               Title="@($"{_overdueCount} tâche(s) en retard")" />
+            </MudBadge>
+        }
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="2" ClipMode="DrawerClipMode.Always">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private int  _overdueCount;
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary        = "#1565C0",
+            Secondary      = "#6A1B9A",
+            AppbarBackground = "#1565C0",
+            Background     = "#F5F5F5",
+            Surface        = "#FFFFFF",
+            Success        = "#2E7D32",
+            Warning        = "#F57F17",
+            Error          = "#C62828"
+        }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        EventService.OnOverdueDetected += HandleOverdueDetected;
+        // Comptage initial via le service — fait en OnAfterRender pour éviter prerender
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Le badge sera mis à jour par les événements background
+        }
+    }
+
+    private async Task HandleOverdueDetected(OverdueDetectedArgs args)
+    {
+        _overdueCount = args.Count;
+        await InvokeAsync(() =>
+        {
+            Snackbar.Add(
+                $"{args.Count} tâche(s) en retard !",
+                Severity.Warning,
+                config => { config.Onclick = _ => Task.CompletedTask; });
+            StateHasChanged();
+        });
+    }
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    public void Dispose()
+    {
+        EventService.OnOverdueDetected -= HandleOverdueDetected;
+    }
+}

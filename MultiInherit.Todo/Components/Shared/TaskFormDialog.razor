@@ -1,0 +1,190 @@
+@inject ITodoService TodoSvc
+@inject ISnackbar    Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" />
+            @(ExistingTask != null ? "Modifier la tâche" : "Nouvelle tâche")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudGrid Spacing="2">
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_title"
+                                  Label="Titre *"
+                                  Required RequiredError="Le titre est obligatoire."
+                                  Variant="Variant.Outlined"
+                                  MaxLength="255" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_description"
+                                  Label="Description"
+                                  Lines="3"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="_priority" Label="Priorité" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("low")">Faible</MudSelectItem>
+                        <MudSelectItem Value="@("normal")">Normale</MudSelectItem>
+                        <MudSelectItem Value="@("high")">Haute</MudSelectItem>
+                        <MudSelectItem Value="@("urgent")">Urgente</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="_status" Label="Statut" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("todo")">À faire</MudSelectItem>
+                        <MudSelectItem Value="@("in_progress")">En cours</MudSelectItem>
+                        <MudSelectItem Value="@("done")">Terminée</MudSelectItem>
+                        <MudSelectItem Value="@("cancelled")">Annulée</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_dueDate"
+                                   Label="Échéance"
+                                   Variant="Variant.Outlined"
+                                   Clearable />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="_estimatedMinutes"
+                                     Label="Estimation (min)"
+                                     Variant="Variant.Outlined"
+                                     Min="0" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?" @bind-Value="_projectId"
+                               Label="Projet" Variant="Variant.Outlined" Clearable>
+                        @foreach (var p in Projects)
+                        {
+                            <MudSelectItem Value="(int?)p.Id">@p.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?" @bind-Value="_parentTaskId"
+                               Label="Tâche parente" Variant="Variant.Outlined" Clearable
+                               Disabled="@(ParentTaskId.HasValue)">
+                        <MudSelectItem Value="(int?)ParentTaskId">
+                            @(ParentTaskId.HasValue ? $"Id {ParentTaskId}" : "Aucune")
+                        </MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.body2" Class="mb-1">Étiquettes</MudText>
+                    <MudStack Row Wrap="Wrap.Wrap" Spacing="1">
+                        @foreach (var tag in Tags)
+                        {
+                            var isSelected = _selectedTagIds.Contains(tag.Id);
+                            <MudChip T="string"
+                                     OnClick="@(() => ToggleTag(tag.Id))"
+                                     Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                                     Style="@($"color:{tag.Color};border-color:{tag.Color};"
+                                              + (isSelected ? $"background:{tag.Color}33;" : ""))">
+                                @tag.Label
+                            </MudChip>
+                        }
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Annuler</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@(!_isValid || _saving)"
+                   OnClick="SubmitAsync">
+            @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate /> }
+            else { <span>@(ExistingTask != null ? "Enregistrer" : "Créer")</span> }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public TodoTask?       ExistingTask  { get; set; }
+    [Parameter] public int?            ParentTaskId  { get; set; }
+    [Parameter] public List<TodoProject> Projects    { get; set; } = [];
+    [Parameter] public List<TodoTag>     Tags        { get; set; } = [];
+
+    private MudForm? _form;
+    private bool     _isValid;
+    private bool     _saving;
+
+    private string   _title            = string.Empty;
+    private string?  _description;
+    private string   _priority         = "normal";
+    private string   _status           = "todo";
+    private DateTime? _dueDate;
+    private int?     _estimatedMinutes;
+    private int?     _projectId;
+    private int?     _parentTaskId;
+    private HashSet<int> _selectedTagIds = [];
+
+    protected override void OnInitialized()
+    {
+        if (ExistingTask != null)
+        {
+            _title            = ExistingTask.Title;
+            _description      = ExistingTask.Description;
+            _priority         = ExistingTask.Priority;
+            _status           = ExistingTask.Status;
+            _dueDate          = ExistingTask.DueDate;
+            _estimatedMinutes = ExistingTask.EstimatedMinutes;
+            _projectId        = ExistingTask.ProjectId;
+            _parentTaskId     = ExistingTask.ParentTaskId;
+            _selectedTagIds   = ExistingTask.Tags.Select(t => t.Id).ToHashSet();
+        }
+        else
+        {
+            _parentTaskId = ParentTaskId;
+        }
+    }
+
+    private void ToggleTag(int tagId)
+    {
+        if (!_selectedTagIds.Remove(tagId)) _selectedTagIds.Add(tagId);
+    }
+
+    private async Task SubmitAsync()
+    {
+        await _form!.Validate();
+        if (!_isValid) return;
+
+        _saving = true;
+        try
+        {
+            var dto = new TaskUpsertDto(
+                Title:            _title,
+                Description:      _description,
+                Priority:         _priority,
+                Status:           _status,
+                DueDate:          _dueDate,
+                ProjectId:        _projectId,
+                ParentTaskId:     _parentTaskId,
+                EstimatedMinutes: _estimatedMinutes,
+                TagIds:           [.. _selectedTagIds]);
+
+            if (ExistingTask != null)
+                await TodoSvc.UpdateTaskAsync(ExistingTask.Id, dto);
+            else
+                await TodoSvc.CreateTaskAsync(dto);
+
+            Snackbar.Add(
+                ExistingTask != null ? "Tâche mise à jour." : "Tâche créée.",
+                Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erreur : {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

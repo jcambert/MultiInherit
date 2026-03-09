@@ -1,0 +1,31 @@
+@* Chip coloré selon le statut d'une tâche *@
+
+<MudChip T="string"
+         Size="@Size"
+         Color="@_color"
+         Icon="@_icon"
+         Variant="Variant.Outlined">
+    @_label
+</MudChip>
+
+@code {
+    [Parameter] public string Status { get; set; } = "todo";
+    [Parameter] public Size   Size   { get; set; } = Size.Small;
+
+    private Color  _color;
+    private string _icon  = string.Empty;
+    private string _label = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        (_color, _icon, _label) = Status switch
+        {
+            "done"        => (Color.Success, Icons.Material.Filled.CheckCircle,    "Terminée"),
+            "in_progress" => (Color.Info,    Icons.Material.Filled.PlayCircle,     "En cours"),
+            "cancelled"   => (Color.Default, Icons.Material.Filled.Cancel,         "Annulée"),
+            "todo"        => (Color.Default, Icons.Material.Filled.RadioButtonUnchecked, "À faire"),
+            "overdue"     => (Color.Error,   Icons.Material.Filled.Warning,        "En retard"),
+            _             => (Color.Default, Icons.Material.Filled.HelpOutline,    Status)
+        };
+    }
+}

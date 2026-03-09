@@ -1,0 +1,143 @@
+@page "/"
+@inject ITodoService TodoSvc
+@inject NavigationManager Nav
+
+<PageTitle>Tableau de bord — TodoList</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-6">Tableau de bord</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" />
+}
+else if (_stats != null)
+{
+    <!-- ── Cartes de statistiques ────────────────────────────────────────── -->
+    <MudGrid Spacing="3" Class="mb-6">
+        <MudItem xs="12" sm="6" md="3">
+            <StatCard Icon="@Icons.Material.Filled.Assignment"
+                      Label="Tâches totales"
+                      Value="@_stats.Total.ToString()"
+                      Color="Color.Primary"
+                      Href="/tasks" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <StatCard Icon="@Icons.Material.Filled.Warning"
+                      Label="En retard"
+                      Value="@_stats.Overdue.ToString()"
+                      Color="Color.Error"
+                      Href="/tasks?filter=overdue" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <StatCard Icon="@Icons.Material.Filled.Today"
+                      Label="Aujourd'hui"
+                      Value="@_stats.DueToday.ToString()"
+                      Color="Color.Warning"
+                      Href="/tasks?filter=today" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <StatCard Icon="@Icons.Material.Filled.CheckCircle"
+                      Label="Complétées"
+                      Value="@_stats.Completed.ToString()"
+                      Color="Color.Success"
+                      Href="/tasks?status=done" />
+        </MudItem>
+    </MudGrid>
+
+    <!-- ── Graphiques ─────────────────────────────────────────────────────── -->
+    <MudGrid Spacing="3" Class="mb-6">
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-4">Répartition par statut</MudText>
+                <MudChart ChartType="ChartType.Donut"
+                          InputData="@StatusChartData"
+                          InputLabels="@StatusLabels"
+                          Width="100%"
+                          Height="250px" />
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-4">Répartition par priorité</MudText>
+                <MudChart ChartType="ChartType.Donut"
+                          InputData="@PriorityChartData"
+                          InputLabels="@PriorityLabels"
+                          Width="100%"
+                          Height="250px" />
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <!-- ── Tâches en retard ───────────────────────────────────────────────── -->
+    @if (_overdueTasks.Count > 0)
+    {
+        <MudPaper Elevation="2" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3" Color="Color.Error">
+                <MudIcon Icon="@Icons.Material.Filled.Warning" Class="mr-1" />
+                Tâches en retard (@_overdueTasks.Count)
+            </MudText>
+            @foreach (var task in _overdueTasks.Take(5))
+            {
+                <TaskCard Task="task" OnAction="RefreshAsync" />
+            }
+            @if (_overdueTasks.Count > 5)
+            {
+                <MudButton Href="/tasks?filter=overdue" Color="Color.Error" Variant="Variant.Text">
+                    Voir toutes les @_overdueTasks.Count tâches en retard →
+                </MudButton>
+            }
+        </MudPaper>
+    }
+
+    <!-- ── Tâches en cours ───────────────────────────────────────────────── -->
+    <MudPaper Elevation="2" Class="pa-4">
+        <MudText Typo="Typo.h6" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Class="mr-1" />
+            En cours (@_inProgressTasks.Count)
+        </MudText>
+        @if (_inProgressTasks.Count == 0)
+        {
+            <MudText Class="mud-text-secondary">Aucune tâche en cours.</MudText>
+        }
+        @foreach (var task in _inProgressTasks.Take(5))
+        {
+            <TaskCard Task="task" OnAction="RefreshAsync" />
+        }
+    </MudPaper>
+}
+
+@code {
+    private bool       _loading = true;
+    private TaskStats? _stats;
+    private List<TodoTask> _overdueTasks    = [];
+    private List<TodoTask> _inProgressTasks = [];
+
+    private double[] StatusChartData    = [];
+    private string[] StatusLabels       = [];
+    private double[] PriorityChartData  = [];
+    private string[] PriorityLabels     = [];
+
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    private async Task RefreshAsync()
+    {
+        _loading = true;
+        _stats   = await TodoSvc.GetStatsAsync();
+
+        _overdueTasks = await TodoSvc.GetTasksAsync(new TaskFilter(OverdueOnly: true));
+        _inProgressTasks = await TodoSvc.GetTasksAsync(
+            new TaskFilter(Status: "in_progress", ShowCompleted: false));
+
+        // Données pour les graphiques
+        StatusChartData = [_stats.Todo, _stats.InProgress, _stats.Completed, _stats.Cancelled];
+        StatusLabels    = ["À faire", "En cours", "Terminées", "Annulées"];
+
+        var priorities = new[] { "low", "normal", "high", "urgent" };
+        PriorityChartData = priorities
+            .Select(p => (double)(_stats.ByPriority.GetValueOrDefault(p, 0)))
+            .ToArray();
+        PriorityLabels = ["Faible", "Normale", "Haute", "Urgente"];
+
+        _loading = false;
+    }
+}
