@@ -62,10 +62,10 @@ public partial class HrEmployee
 {
     public string? Department { get; set; }
     // Generated:
-    //   public int PartnerId { get; set; }
-    //   public ResPartner Partner { get; set; }
-    //   public string Name  { get => Partner.Name;  set => Partner.Name  = value; }
-    //   public string? Email { get => Partner.Email; set => Partner.Email = value; }
+    //   public int       PartnerId { get; set; }
+    //   public ResPartner? Partner  { get; set; }      // nullable
+    //   public string  Name  { get => Partner?.Name;  set { if (Partner != null) Partner.Name  = value; } }
+    //   public string? Email { get => Partner?.Email; set { if (Partner != null) Partner.Email = value; } }
 }
 ```
 
@@ -124,6 +124,143 @@ Optional metadata on a property (equivalent to Odoo field kwargs).
 | `Help` | `string?` | `null` |
 | `Default` | `string?` | `null` |
 
+### `[Many2one(comodel)]`
+Generates a FK integer property + nullable navigation property.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `comodel` *(ctor)* | `string` | — | Technical name of the target model |
+| `ForeignKey` | `string?` | `{Property}Id` | FK property name override |
+| `Required` | `bool` | `false` | Nullable FK if false |
+| `OnDelete` | `OnDeleteAction` | `SetNull` | `SetNull`, `Cascade`, `Restrict` |
+
+### `[One2many(comodel, inverseField)]`
+Navigation-only collection backed by the child's Many2one FK.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `comodel` *(ctor)* | `string` | Technical name of the child model |
+| `inverseField` *(ctor)* | `string` | Name of the Many2one property on the child |
+
+### `[Many2many(comodel)]`
+Collection with a join table.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `comodel` *(ctor)* | `string` | — | Technical name of the other model |
+| `RelationTable` | `string?` | `{a}_{b}_rel` (sorted) | Join table name |
+| `Column1` | `string?` | `{model}_id` | FK column for this side |
+| `Column2` | `string?` | `{comodel}_id` | FK column for the other side |
+
+### `[Compute(method)]` + `[Depends(...)]`
+Declares a computed property. The property **must** be `partial`.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `method` *(ctor)* | `string` | — | Name of the `void` compute method |
+| `Store` | `bool` | `false` | If `true`, persisted in DB |
+| `Depends` | `string?` | `null` | Comma-separated dependency names (alternative to `[Depends]`) |
+
+```csharp
+[Compute(nameof(_compute_subtotal))]
+[Depends("UnitPrice", "Quantity")]
+public partial decimal Subtotal { get; private set; }   // partial is required
+
+private void _compute_subtotal() => Subtotal = UnitPrice * Quantity;
+```
+
+### `[Constrains(fields...)]`
+Marks a validation method triggered before save.
+
+```csharp
+[Constrains("Price")]
+private void _check_price()
+{
+    if (Price < 0) throw new ModelValidationException("Price cannot be negative.");
+}
+```
+
+Call `model.ValidateConstraints()` (or `ValidateConstraints(changedFields)`) before saving.
+
+### `[Onchange(fields...)]`
+Marks a method triggered when specific fields change.
+
+```csharp
+[Onchange("Partner")]
+private void _onchange_partner()
+{
+    if (Partner != null && string.IsNullOrEmpty(Ref))
+        Ref = $"SO/{Partner.Name}/001";
+}
+```
+
+### `[SqlConstraint(name, sql, message)]`
+Declares a database-level constraint (class-level attribute).
+
+```csharp
+[SqlConstraint("unique_email", "UNIQUE(Email)", "Email must be unique.")]
+[SqlConstraint("check_price", "Price >= 0", "Price must be non-negative.")]
+public partial class MyModel { ... }
+```
+
+- SQL starting with `UNIQUE(...)` → EF Core `HasIndex().IsUnique()`
+- Other SQL → `CHECK` constraint
+
+---
+
+## Computed fields
+
+Equivalent to Odoo's `compute=` and `@api.depends`.
+
+```csharp
+[Model("sale.order")]
+public partial class SaleOrder
+{
+    public decimal UnitPrice { get; set; }
+    public int     Quantity  { get; set; }
+    public decimal Discount  { get; set; }
+
+    // Non-stored: recomputed lazily when a dependency changes
+    [Compute(nameof(_compute_subtotal), Depends = "UnitPrice,Quantity")]
+    public partial decimal Subtotal { get; private set; }   // partial is required
+
+    // Stored: persisted in DB, recomputed when dependencies change
+    [Compute(nameof(_compute_total), Store = true)]
+    [Depends("Subtotal", "Discount")]
+    public partial decimal Total { get; private set; }
+
+    private void _compute_subtotal() => Subtotal = UnitPrice * Quantity;
+    private void _compute_total()    => Total = Subtotal * (1 - Discount / 100m);
+}
+```
+
+**What the generator produces:**
+- Backing field + dirty flag for non-stored fields
+- Lazy evaluation: recomputes only when dirty
+- `__InvalidateDependents(changedField)` dispatcher called on every setter
+- `INotifyPropertyChanged` events fired on change
+- `SaleOrder.Fields.Subtotal` catalog entry with `IsComputed = true, IsStored = false`
+
+---
+
+## Build-time diagnostics
+
+| Code | Severity | Description |
+|------|----------|-------------|
+| `MI0001` | Error | Parent model referenced in `[Inherit]`/`[Inherits]` not found |
+| `MI0002` | Error | Circular inheritance detected (DFS cycle detection) |
+| `MI0003` | Error | Model class is not `partial` |
+| `MI0004` | Error | `[Compute("method")]` references a non-existent method |
+| `MI0005` | Error | Computed property has a `public` setter |
+| `MI0006` | Error | Generated FK name collides with an existing property |
+| `MI0007` | Error | `[Constrains]` method not found or wrong signature |
+| `MI0008` | Error | `[Onchange]` method not found |
+| `MI0009` | Error | `[One2many]` inverse field not found as `[Many2one]` on the comodel |
+| `MI0010` | Error | Relation comodel not found in this compilation |
+| `MI0011` | Error | `[Compute]` property is not declared `partial` |
+| `MI0101` | Warning | Field name conflict between two classical parents |
+| `MI0102` | Warning | Model declared in global namespace |
+
 ---
 
 ## Runtime registry
@@ -145,101 +282,11 @@ ModelMeta? meta = ModelRegistry.Get<ResPartner>();
 ResPartner p = ModelRegistry.CreateInstance<ResPartner>("res.partner");
 ```
 
----
-
-## Project structure
-
-```
-MultiInherit/
-├── MultiInherit.Core/          # Attributes + IModel + ModelRegistry
-│   ├── Attributes.cs           # [Model], [Inherit], [Inherits], [ModelField]
-│   ├── IModel.cs               # IModel interface + ModelMeta record
-│   └── ModelRegistry.cs        # Thread-safe runtime registry
-│
-├── MultiInherit.Generator/     # Roslyn IIncrementalGenerator
-│   ├── ModelGenerator.cs       # Entry point (IIncrementalGenerator)
-│   ├── ModelParser.cs          # Semantic extraction from INamedTypeSymbol
-│   ├── ModelDeclaration.cs     # Raw data model (pre-resolution)
-│   ├── ModelResolver.cs        # Cross-model graph resolution
-│   ├── ResolvedModel.cs        # Resolved data model (post-resolution)
-│   └── CodeEmitter.cs          # C# source emitter
-│
-└── MultiInherit.Sample/        # Usage examples
-    ├── Models.cs               # All three inheritance modes
-    └── Program.cs              # Runtime demo
-```
-
----
-
-## Requirements
-
-- .NET 10 SDK
-- C# 14 (`LangVersion` in consuming projects)
-- Generator itself targets `netstandard2.0` (Roslyn constraint)
-
----
-
-## Limitations & roadmap
-
-- [ ] Computed fields (`@property` equivalent)
-- [ ] Many2one / One2many / Many2many relational fields
-- [ ] `onchange` / `constrains` hooks
-- [ ] ORM integration (EF Core provider)
-- [ ] Circular inheritance detection with clear diagnostics
-
----
-
-## Computed fields
-
-Equivalent to Odoo's `compute=` and `@api.depends`.
-
-```csharp
-[Model("sale.order")]
-public partial class SaleOrder
-{
-    public decimal UnitPrice { get; set; }
-    public int     Quantity  { get; set; }
-    public decimal Discount  { get; set; }
-
-    // Non-stored: recomputed lazily when a dependency changes
-    [Compute(nameof(_compute_subtotal), Depends = "UnitPrice,Quantity")]
-    public decimal Subtotal { get; private set; }
-
-    // Stored: persisted in DB, recomputed when dependencies change
-    [Compute(nameof(_compute_total), Store = true)]
-    [Depends("Subtotal", "Discount")]
-    public decimal Total { get; private set; }
-
-    private void _compute_subtotal() => Subtotal = UnitPrice * Quantity;
-    private void _compute_total()    => Total = Subtotal * (1 - Discount / 100m);
-}
-```
-
-**What the generator produces:**
-- Backing field + dirty flag for non-stored fields
-- Lazy evaluation: recomputes only when dirty
-- `__InvalidateDependents(changedField)` dispatcher called on every setter
-- `INotifyPropertyChanged` events fired on change
-- `SaleOrder.Fields.Subtotal` catalog entry with `IsComputed = true, IsStored = false`
-
-**Build-time diagnostics:**
-- `MI0004` — error if the compute method does not exist on the class
-- `MI0005` — error if a computed property has a `public` setter
-
----
-
-## Build-time diagnostics
-
-| Code | Severity | Description |
-|------|----------|-------------|
-| `MI0001` | Error | Parent model referenced in `[Inherit]`/`[Inherits]` not found |
-| `MI0002` | Error | Circular inheritance detected (DFS cycle detection) |
-| `MI0003` | Error | Model class is not `partial` |
-| `MI0004` | Error | `[Compute("method")]` references a non-existent method |
-| `MI0005` | Error | Computed property has a `public` setter |
-| `MI0006` | Error | Generated FK name collides with an existing property |
-| `MI0101` | Warning | Field name conflict between two classical parents |
-| `MI0102` | Warning | Model declared in global namespace |
+`ModelMeta` exposes:
+- `Name` — technical model name
+- `ClrType` — the CLR type
+- `Inherits` — all parent model names (classical + delegation)
+- `DelegationInherits` — delegation parent names only (`[Inherits]`)
 
 ---
 
@@ -261,8 +308,10 @@ services.AddDbContext<AppDbContext>(opt =>
 **What `ModelDbContext` does automatically:**
 - Maps every `[Model]` class to a table named `model_name` (dots → underscores)
 - Adds a shadow `Id` primary key if none is declared
-- Configures FK relationships for `[Inherits]` delegation parents
+- Configures FK relationships for `[Inherits]` delegation parents only (not classical)
+- Configures `[Many2one]` / `[Many2many]` FK relationships
 - Ignores non-stored computed fields (`Store = false`)
+- Routes `UNIQUE(...)` sql constraints to `HasIndex().IsUnique()`, others to `CHECK`
 
 **Odoo-like query API:**
 ```csharp
@@ -275,3 +324,60 @@ var partner = await ctx.Browse<ResPartner>("res.partner", 42);
 // env['res.partner']  — returns IQueryable<ResPartner>
 var query = ctx.Model<ResPartner>("res.partner");
 ```
+
+---
+
+## Project structure
+
+```
+MultiInherit/
+├── MultiInherit.Core/                 # Attributes + IModel + ModelRegistry (net10.0)
+│   ├── Attributes.cs                  # [Model], [Inherit], [Inherits], [ModelField]
+│   ├── RelationAttributes.cs          # [Many2one], [One2many], [Many2many]
+│   ├── ComputeAttribute.cs            # [Compute], [Depends]
+│   ├── ConstraintAttributes.cs        # [Constrains], [Onchange], [SqlConstraint]
+│   ├── IModel.cs                      # IModel interface + ModelMeta record
+│   ├── ModelFieldInfo.cs              # ModelFieldInfo (static field catalog)
+│   └── ModelRegistry.cs              # Thread-safe runtime registry
+│
+├── MultiInherit.Generator/            # Roslyn IIncrementalGenerator (netstandard2.0)
+│   ├── ModelGenerator.cs              # Entry point
+│   ├── ModelParser.cs                 # Semantic extraction from INamedTypeSymbol
+│   ├── ModelDeclaration.cs            # Raw data model (pre-resolution)
+│   ├── ModelResolver.cs               # Cross-model graph resolution + diagnostics
+│   ├── ResolvedModel.cs               # Resolved data model (post-resolution)
+│   ├── CodeEmitter.cs                 # C# source emitter
+│   └── Diagnostics.cs                 # Descriptors MI0001–MI0011
+│
+├── MultiInherit.EFCore/               # EF Core integration (net10.0)
+│   ├── ModelDbContext.cs              # Auto-maps all models + configures relations
+│   └── ModelDbContextExtensions.cs   # .Model<T>(), .Search<T>(), .Browse<T>()
+│
+├── MultiInherit.Sample/               # Usage examples (net10.0)
+│   ├── Models.cs                      # All three inheritance modes + relations
+│   └── Program.cs                     # Runtime demo
+│
+└── MultiInherit.Tests/                # xUnit v3 test project (net10.0)
+    ├── Generator/                     # Source generator tests
+    ├── Unit/                          # Unit tests (ModelRegistry, etc.)
+    ├── Integration/                   # EF Core integration tests (PostgreSQL)
+    └── Helpers/                       # GeneratorTestHelper
+```
+
+---
+
+## Requirements
+
+- .NET 10 SDK
+- C# 14 (`LangVersion` in consuming projects) — required for `partial` properties
+- Generator itself targets `netstandard2.0` (Roslyn constraint)
+
+---
+
+## Roadmap
+
+- [ ] Migrations EF Core aware de la délégation (`[Inherits]`)
+- [ ] Génération OpenAPI/JSON Schema depuis `ModelFieldInfo`
+- [ ] Support multi-assembly (comodels dans des assemblies séparées)
+- [ ] Égalité structurelle sur `ResolvedModel` pour optimiser le cache incrémental Roslyn
+- [ ] NuGet packaging (`MultiInherit.Core`, `MultiInherit.Generator` as analyzer, `MultiInherit.EFCore`)
