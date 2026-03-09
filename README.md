@@ -206,6 +206,16 @@ public partial class MyModel { ... }
 - SQL starting with `UNIQUE(...)` → EF Core `HasIndex().IsUnique()`
 - Other SQL → `CHECK` constraint
 
+### `[Selection(values...)]`
+Restricts a `string` or `string?` property to a predefined set of values, equivalent to Odoo's `fields.Selection`. The generator emits a static `HashSet` and validates the value inside `ValidateConstraints()`.
+
+```csharp
+[Selection("draft", "confirmed", "done")]
+public string Status { get; set; } = "draft";
+```
+
+The property must be `string` or `string?`; applying `[Selection]` to any other type emits **MI0012**.
+
 ---
 
 ## Computed fields
@@ -258,6 +268,7 @@ public partial class SaleOrder
 | `MI0009` | Error | `[One2many]` inverse field not found as `[Many2one]` on the comodel |
 | `MI0010` | Error | Relation comodel not found in this compilation |
 | `MI0011` | Error | `[Compute]` property is not declared `partial` |
+| `MI0012` | Error | `[Selection]` applied to a non-`string` property |
 | `MI0101` | Warning | Field name conflict between two classical parents |
 | `MI0102` | Warning | Model declared in global namespace |
 
@@ -347,7 +358,9 @@ MultiInherit/
 │   ├── ModelResolver.cs               # Cross-model graph resolution + diagnostics
 │   ├── ResolvedModel.cs               # Resolved data model (post-resolution)
 │   ├── CodeEmitter.cs                 # C# source emitter
-│   └── Diagnostics.cs                 # Descriptors MI0001–MI0011
+│   ├── Diagnostics.cs                 # Descriptors MI0001–MI0012, MI0101–MI0102
+│   ├── AnalyzerReleases.Shipped.md    # NuGet analyzer release tracking
+│   └── AnalyzerReleases.Unshipped.md # Pending rules for next release
 │
 ├── MultiInherit.EFCore/               # EF Core integration (net10.0)
 │   ├── ModelDbContext.cs              # Auto-maps all models + configures relations
@@ -376,8 +389,10 @@ MultiInherit/
 
 ## Roadmap
 
+- [x] NuGet packaging — `MultiInherit.Core`, `MultiInherit.Generator` (analyzer), `MultiInherit.EFCore`
+- [x] `[Selection]` field — restricts a `string` property to a predefined set of values, validated in `ValidateConstraints()`
+- [ ] `[Default(nameof(GetDefault))]` — computed default value via method
 - [ ] Migrations EF Core aware de la délégation (`[Inherits]`)
 - [ ] Génération OpenAPI/JSON Schema depuis `ModelFieldInfo`
 - [ ] Support multi-assembly (comodels dans des assemblies séparées)
 - [ ] Égalité structurelle sur `ResolvedModel` pour optimiser le cache incrémental Roslyn
-- [ ] NuGet packaging (`MultiInherit.Core`, `MultiInherit.Generator` as analyzer, `MultiInherit.EFCore`)

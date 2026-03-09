@@ -241,12 +241,26 @@ internal static class CodeEmitter
 
     private static void EmitConstraintDispatcher(StringBuilder sb, ResolvedModel model)
     {
-        if (model.ConstraintMethods.Count == 0 && model.SqlConstraints.Count == 0) return;
+        var selectionFields = model.OwnFields
+            .Concat(model.ClassicallyInheritedFields)
+            .Where(f => f.SelectionValues != null && f.SelectionValues.Length > 0)
+            .ToList();
+
+        if (model.ConstraintMethods.Count == 0 && model.SqlConstraints.Count == 0
+            && selectionFields.Count == 0) return;
 
         sb.AppendLine("    /// <summary>");
         sb.AppendLine("    /// Runs all [Constrains] methods. Call before saving the record.");
         sb.AppendLine("    /// Throws <see cref=\"ModelValidationException\"/> on the first violation.");
         sb.AppendLine("    /// </summary>");
+        // Sets statiques pour les champs [Selection]
+        foreach (var f in selectionFields)
+        {
+            var vals = string.Join(", ", f.SelectionValues!.Select(v => $"\"{v}\""));
+            sb.AppendLine($"    private static readonly System.Collections.Generic.HashSet<string> ___{f.PropertyName}_selection =");
+            sb.AppendLine($"        new System.Collections.Generic.HashSet<string> {{ {vals} }};");
+        }
+
         // Champs statiques pour éviter une allocation HashSet par appel
         foreach (var cm in model.ConstraintMethods.Where(c => c.Fields.Length > 0))
         {
@@ -258,6 +272,27 @@ internal static class CodeEmitter
         sb.AppendLine("    public void ValidateConstraints(System.Collections.Generic.IEnumerable<string>? changedFields = null)");
         sb.AppendLine("    {");
         sb.AppendLine("        var changed = changedFields?.ToHashSet();");
+
+        // Validation des champs [Selection]
+        foreach (var f in selectionFields)
+        {
+            var allowed = string.Join(", ", f.SelectionValues!.Select(v => $"'{v}'"));
+            sb.AppendLine($"        // [Selection] {f.PropertyName}");
+            sb.AppendLine($"        if (changed == null || changed.Contains(\"{f.PropertyName}\"))");
+            sb.AppendLine($"        {{");
+            if (f.IsNullable)
+                sb.AppendLine($"            if ({f.PropertyName} != null && !___{f.PropertyName}_selection.Contains({f.PropertyName}))");
+            else
+                sb.AppendLine($"            if (!___{f.PropertyName}_selection.Contains({f.PropertyName} ?? string.Empty))");
+            sb.AppendLine($"                throw new ModelValidationException(");
+            sb.AppendLine($"                    $\"Field '{f.PropertyName}' value '{{{f.PropertyName}}}' is not valid. Allowed: {allowed}.\",");
+            sb.AppendLine($"                    nameof({f.PropertyName}));");
+            sb.AppendLine($"        }}");
+        }
+
+        // Suppression de la ligne redondante déjà émise ci-dessus
+        // (le var changed est émis juste avant cette section)
+        sb.AppendLine("        // [Constrains] methods");
         foreach (var cm in model.ConstraintMethods)
         {
             if (cm.Fields.Length == 0)

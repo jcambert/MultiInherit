@@ -18,6 +18,7 @@ internal static class ModelParser
     private const string ConstrainsAttr = "Constrains";
     private const string OnchangeAttr   = "Onchange";
     private const string SqlConstrAttr  = "SqlConstraint";
+    private const string SelectionAttr  = "Selection";
 
     public static ModelDeclaration? Parse(
         INamedTypeSymbol classSymbol,
@@ -258,16 +259,37 @@ internal static class ModelParser
             }
             else
             {
+                var selectionAttr = GetAttribute(member, SelectionAttr);
+                string[]? selectionValues = null;
+
+                if (selectionAttr != null)
+                {
+                    // MI0012 : [Selection] requiert string ou string?
+                    var baseType = member.Type.SpecialType;
+                    var isString = baseType == SpecialType.System_String ||
+                                   (member.Type is INamedTypeSymbol { SpecialType: SpecialType.System_String });
+                    if (!isString)
+                        diagnostics.Add(Diagnostics.Make(Diagnostics.SelectionOnNonStringProperty,
+                            propLoc, member.Name, modelName, typeName));
+                    else
+                        selectionValues = selectionAttr.ConstructorArguments
+                            .SelectMany(a => a.Values)
+                            .Select(tv => tv.Value as string)
+                            .Where(s => s != null)
+                            .ToArray()!;
+                }
+
                 ownFields.Add(new FieldDeclaration(
-                    PropertyName: member.Name,
-                    TypeName:     typeName,
-                    IsNullable:   isNullable,
-                    HasSetter:    member.SetMethod != null,
-                    Label:        fieldAttr != null ? GetNamedStringArg(fieldAttr, "String") : null,
-                    Required:     fieldAttr != null && GetNamedBoolArg(fieldAttr, "Required"),
-                    Readonly:     fieldAttr != null && GetNamedBoolArg(fieldAttr, "Readonly"),
-                    Help:         fieldAttr != null ? GetNamedStringArg(fieldAttr, "Help") : null,
-                    Default:      fieldAttr != null ? GetNamedStringArg(fieldAttr, "Default") : null
+                    PropertyName:    member.Name,
+                    TypeName:        typeName,
+                    IsNullable:      isNullable,
+                    HasSetter:       member.SetMethod != null,
+                    Label:           fieldAttr != null ? GetNamedStringArg(fieldAttr, "String") : null,
+                    Required:        fieldAttr != null && GetNamedBoolArg(fieldAttr, "Required"),
+                    Readonly:        fieldAttr != null && GetNamedBoolArg(fieldAttr, "Readonly"),
+                    Help:            fieldAttr != null ? GetNamedStringArg(fieldAttr, "Help") : null,
+                    Default:         fieldAttr != null ? GetNamedStringArg(fieldAttr, "Default") : null,
+                    SelectionValues: selectionValues
                 ));
             }
         }
@@ -284,29 +306,41 @@ internal static class ModelParser
     {
         foreach (var method in cls.GetMembers().OfType<IMethodSymbol>())
         {
-            if (method.IsStatic || method.MethodKind != MethodKind.Ordinary) continue;
+            if (method.MethodKind != MethodKind.Ordinary) continue;
             var loc = method.Locations.FirstOrDefault();
 
             var constrainsAttr = GetAttribute(method, ConstrainsAttr);
             if (constrainsAttr != null)
             {
-                var fields = constrainsAttr.ConstructorArguments
-                    .SelectMany(a => a.Values)
-                    .Select(tv => tv.Value as string)
-                    .Where(s => s != null)
-                    .ToArray()!;
-                constraints.Add(new ConstraintMethodDeclaration(method.Name, fields!, loc));
+                // MI0007 : la méthode doit être non-statique et retourner void
+                if (method.IsStatic || !method.ReturnsVoid)
+                    diagnostics.Add(Diagnostics.Make(Diagnostics.ConstrainsMethodNotFound, loc, method.Name, modelName));
+                else
+                {
+                    var fields = constrainsAttr.ConstructorArguments
+                        .SelectMany(a => a.Values)
+                        .Select(tv => tv.Value as string)
+                        .Where(s => s != null)
+                        .ToArray()!;
+                    constraints.Add(new ConstraintMethodDeclaration(method.Name, fields!, loc));
+                }
             }
 
             var onchangeAttr = GetAttribute(method, OnchangeAttr);
             if (onchangeAttr != null)
             {
-                var fields = onchangeAttr.ConstructorArguments
-                    .SelectMany(a => a.Values)
-                    .Select(tv => tv.Value as string)
-                    .Where(s => s != null)
-                    .ToArray()!;
-                onchanges.Add(new OnchangeMethodDeclaration(method.Name, fields!, loc));
+                // MI0008 : la méthode doit être non-statique et retourner void
+                if (method.IsStatic || !method.ReturnsVoid)
+                    diagnostics.Add(Diagnostics.Make(Diagnostics.OnchangeMethodNotFound, loc, method.Name, modelName));
+                else
+                {
+                    var fields = onchangeAttr.ConstructorArguments
+                        .SelectMany(a => a.Values)
+                        .Select(tv => tv.Value as string)
+                        .Where(s => s != null)
+                        .ToArray()!;
+                    onchanges.Add(new OnchangeMethodDeclaration(method.Name, fields!, loc));
+                }
             }
         }
     }

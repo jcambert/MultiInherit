@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  This .nuspec is used only when publishing to NuGet (dotnet pack /p:NuspecFile=...).
+  It declares the runtime dependency on MultiInherit.Core so that consumers
+  automatically get the attributes when they install MultiInherit.Generator.
+
+  Usage:
+    dotnet pack MultiInherit.Generator.csproj /p:NuspecFile=MultiInherit.Generator.nuspec
+-->
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>MultiInherit.Generator</id>
+    <version>$version$</version>
+    <authors>YourOrg</authors>
+    <description>Roslyn source generator for MultiInherit — emits Odoo-style multiple inheritance (extend, classical, delegation) from simple C# attributes.</description>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/yourorg/MultiInherit</projectUrl>
+    <tags>source-generator roslyn odoo inheritance multi-inherit</tags>
+    <developmentDependency>true</developmentDependency>
+    <dependencies>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="MultiInherit.Core" version="$version$" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="bin\Release\netstandard2.0\MultiInherit.Generator.dll"
+          target="analyzers\dotnet\cs\MultiInherit.Generator.dll" />
+  </files>
+</package>

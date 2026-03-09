@@ -88,7 +88,7 @@ internal static class Diagnostics
     public static readonly DiagnosticDescriptor ConstrainsMethodNotFound = new(
         id:                 "MI0007",
         title:              "Constrains method not found",
-        messageFormat:      "[Constrains] on method '{0}' in model '{1}': no matching non-static void method found.",
+        messageFormat:      "[Constrains] on method '{0}' in model '{1}': no matching non-static void method found",
         category:           Category,
         defaultSeverity:    DiagnosticSeverity.Error,
         isEnabledByDefault: true
@@ -98,7 +98,7 @@ internal static class Diagnostics
     public static readonly DiagnosticDescriptor OnchangeMethodNotFound = new(
         id:                 "MI0008",
         title:              "Onchange method not found",
-        messageFormat:      "[Onchange] on method '{0}' in model '{1}': no matching non-static void method found.",
+        messageFormat:      "[Onchange] on method '{0}' in model '{1}': no matching non-static void method found",
         category:           Category,
         defaultSeverity:    DiagnosticSeverity.Error,
         isEnabledByDefault: true
@@ -108,7 +108,7 @@ internal static class Diagnostics
     public static readonly DiagnosticDescriptor One2manyInverseNotFound = new(
         id:                 "MI0009",
         title:              "One2many inverse field not found",
-        messageFormat:      "Property '{0}' on model '{1}': inverse field '{2}' not found as a [Many2one] on '{3}'.",
+        messageFormat:      "Property '{0}' on model '{1}': inverse field '{2}' not found as a [Many2one] on '{3}'",
         category:           Category,
         defaultSeverity:    DiagnosticSeverity.Error,
         isEnabledByDefault: true
@@ -118,10 +118,22 @@ internal static class Diagnostics
     public static readonly DiagnosticDescriptor RelationComodelNotFound = new(
         id:                 "MI0010",
         title:              "Relation comodel not found",
-        messageFormat:      "Property '{0}' on model '{1}': comodel '{2}' is not declared in this compilation.",
+        messageFormat:      "Property '{0}' on model '{1}': comodel '{2}' is not declared in this compilation",
         category:           Category,
         defaultSeverity:    DiagnosticSeverity.Error,
         isEnabledByDefault: true
+    );
+
+    /// <summary>[Selection] can only be applied to string or string? properties.</summary>
+    public static readonly DiagnosticDescriptor SelectionOnNonStringProperty = new(
+        id:                 "MI0012",
+        title:              "Selection field must be a string property",
+        messageFormat:      "Property '{0}' on model '{1}' has [Selection] but its type is '{2}'. " +
+                            "[Selection] only supports string and string? properties.",
+        category:           Category,
+        defaultSeverity:    DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri:        "https://github.com/yourorg/MultiInherit/docs/MI0012"
     );
 
     /// <summary>[Compute] property must be declared as partial.</summary>

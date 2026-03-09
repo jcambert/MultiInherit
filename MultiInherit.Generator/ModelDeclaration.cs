@@ -24,15 +24,16 @@ internal sealed record ModelDeclaration(
 // ── Stored field ──────────────────────────────────────────────────────────
 
 internal sealed record FieldDeclaration(
-    string  PropertyName,
-    string  TypeName,
-    bool    IsNullable,
-    bool    HasSetter,
-    string? Label,
-    bool    Required,
-    bool    Readonly,
-    string? Help,
-    string? Default
+    string    PropertyName,
+    string    TypeName,
+    bool      IsNullable,
+    bool      HasSetter,
+    string?   Label,
+    bool      Required,
+    bool      Readonly,
+    string?   Help,
+    string?   Default,
+    string[]? SelectionValues = null   // non-null → champ [Selection]
 );
 
 // ── Computed field ────────────────────────────────────────────────────────

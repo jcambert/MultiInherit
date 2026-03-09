@@ -12,7 +12,14 @@
     <Company>YourOrg</Company>
     <Copyright>Copyright © YourOrg 2025</Copyright>
     <RepositoryUrl>https://github.com/yourorg/MultiInherit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/yourorg/MultiInherit</PackageProjectUrl>
+    <PackageTags>source-generator;roslyn;odoo;inheritance;multi-inherit</PackageTags>
+    <!-- Shared version — bump here for all packages -->
+    <Version>0.1.0</Version>
+    <!-- Don't generate .nupkg on every build; use `dotnet pack` explicitly -->
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <!-- Enforce consistent line endings and encoding -->

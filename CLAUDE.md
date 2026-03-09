@@ -209,17 +209,19 @@ partial class SaleOrderLine : IModel, INotifyPropertyChanged
 ## Tâches à venir (roadmap)
 
 ### Priorité haute
-- [ ] **Tests unitaires** — projet `MultiInherit.Tests` avec `Microsoft.CodeAnalysis.Analyzer.Testing`
-  - Tester chaque diagnostic (MI0001 à MI0010)
-  - Tester le code généré pour chaque mode d'héritage
-  - Snapshot tests sur les fichiers `.g.cs`
+- [x] **Tests unitaires** — projet `MultiInherit.Tests` avec xUnit v3 (83 tests, 0 échec)
+  - ✅ Tous les diagnostics MI0001–MI0012 et MI0101–MI0102 testés
+  - ✅ Tests de code généré (snapshot, ClassicalInheritance, Delegation, Relations, Computed)
+  - ✅ Tests d'intégration EF Core (TestContainers PostgreSQL)
 
 ### Priorité moyenne
-- [ ] **NuGet packaging**
-  - `MultiInherit.Core` → package ordinaire
-  - `MultiInherit.Generator` → package analyzer (`analyzers/dotnet/cs/`)
-  - `MultiInherit.EFCore` → package optionnel
-- [ ] **Champ `[Selection]`** — équivalent Odoo `fields.Selection`, génère un `enum`
+- [x] **NuGet packaging**
+  - `MultiInherit.Core` → package ordinaire avec README
+  - `MultiInherit.Generator` → package analyzer (`analyzers/dotnet/cs/`), `PackageType=Analyzer`, `DevelopmentDependency=true`, release tracking (`AnalyzerReleases.Unshipped.md`)
+  - `MultiInherit.EFCore` → package optionnel avec README
+  - Version partagée dans `Directory.Build.props` (`<Version>0.1.0</Version>`)
+  - Dépendance Core→Generator documentée dans `.nuspec` pour la publication
+- [x] **Champ `[Selection]`** — `SelectionAttribute`, MI0012, validation générée dans `ValidateConstraints()`
 - [ ] **`[Default(nameof(GetDefault))]`** — valeur par défaut via méthode
 
 ### Priorité basse

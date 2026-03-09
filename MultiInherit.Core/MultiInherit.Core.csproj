@@ -6,5 +6,10 @@
     <AssemblyName>MultiInherit.Core</AssemblyName>
     <PackageId>MultiInherit.Core</PackageId>
     <Description>Runtime attributes and model registry for MultiInherit — Odoo-style multiple inheritance for C#.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>

@@ -345,6 +345,399 @@ public class DiagnosticsTests
         Assert.DoesNotContain(diags, d => d.Id == "MI0101");
     }
 
+    // ── MI0004 — Compute method not found ─────────────────────────────────
+
+    [Fact]
+    public void MI0004_ComputeMethod_NotFound()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                [Compute("_compute_missing")]
+                [Depends("Name")]
+                public partial string Display { get; private set; }
+
+                public string Name { get; set; } = string.Empty;
+                // _compute_missing does not exist
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diags, d => d.Id == "MI0004");
+    }
+
+    [Fact]
+    public void MI0004_NotEmitted_WhenComputeMethodExists()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                public string Name { get; set; } = string.Empty;
+
+                [Compute(nameof(_computeDisplay))]
+                [Depends("Name")]
+                public partial string Display { get; private set; }
+
+                private void _computeDisplay() => Display = Name.ToUpper();
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.DoesNotContain(diags, d => d.Id == "MI0004");
+    }
+
+    // ── MI0005 — Computed property must be read-only ───────────────────────
+
+    [Fact]
+    public void MI0005_ComputedProperty_HasPublicSetter()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                public string Name { get; set; } = string.Empty;
+
+                [Compute(nameof(_computeDisplay))]
+                [Depends("Name")]
+                public string Display { get; set; } = string.Empty;
+
+                private void _computeDisplay() => Display = Name.ToUpper();
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diags, d => d.Id == "MI0005");
+    }
+
+    // ── MI0006 — Foreign key collision ────────────────────────────────────
+
+    [Fact]
+    public void MI0006_ForeignKey_Collision_WithExistingProperty()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("res.partner")]
+            public partial class ResPartner { public string Name { get; set; } = string.Empty; }
+
+            [Model("sale.order")]
+            [Inherits("res.partner")]
+            public partial class SaleOrder
+            {
+                // PartnerId is the default FK derived from "res.partner",
+                // but that property already exists explicitly.
+                public int PartnerId { get; set; }
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diags, d => d.Id == "MI0006");
+    }
+
+    [Fact]
+    public void MI0006_NotEmitted_WhenForeignKeyExplicit_NoConflict()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("res.partner")]
+            public partial class ResPartner { public string Name { get; set; } = string.Empty; }
+
+            [Model("sale.order")]
+            [Inherits("res.partner", ForeignKey = "CustomPartnerId")]
+            public partial class SaleOrder { }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.DoesNotContain(diags, d => d.Id == "MI0006");
+    }
+
+    // ── MI0007 — Constrains method wrong signature ─────────────────────────
+
+    [Fact]
+    public void MI0007_ConstrainsMethod_IsStatic()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                public string Name { get; set; } = string.Empty;
+
+                [Constrains("Name")]
+                private static void _checkName() { }
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diags, d => d.Id == "MI0007");
+    }
+
+    [Fact]
+    public void MI0007_ConstrainsMethod_ReturnsNonVoid()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                public string Name { get; set; } = string.Empty;
+
+                [Constrains("Name")]
+                private bool _checkName() => true;
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diags, d => d.Id == "MI0007");
+    }
+
+    [Fact]
+    public void MI0007_NotEmitted_WhenConstrainsMethodValid()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                public string Name { get; set; } = string.Empty;
+
+                [Constrains("Name")]
+                private void _checkName()
+                {
+                    if (string.IsNullOrEmpty(Name))
+                        throw new ModelValidationException("Required.", nameof(Name));
+                }
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.DoesNotContain(diags, d => d.Id == "MI0007");
+    }
+
+    // ── MI0008 — Onchange method wrong signature ───────────────────────────
+
+    [Fact]
+    public void MI0008_OnchangeMethod_IsStatic()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                public string Name { get; set; } = string.Empty;
+
+                [Onchange("Name")]
+                private static void _onchangeName() { }
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diags, d => d.Id == "MI0008");
+    }
+
+    [Fact]
+    public void MI0008_NotEmitted_WhenOnchangeMethodValid()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                public string Name { get; set; } = string.Empty;
+                public string DisplayName { get; set; } = string.Empty;
+
+                [Onchange("Name")]
+                private void _onchangeName()
+                {
+                    DisplayName = Name.Trim();
+                }
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.DoesNotContain(diags, d => d.Id == "MI0008");
+    }
+
+    // ── MI0011 — Computed property must be partial ─────────────────────────
+
+    [Fact]
+    public void MI0011_ComputedProperty_NotPartial()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                public string Name { get; set; } = string.Empty;
+
+                [Compute(nameof(_computeDisplay))]
+                [Depends("Name")]
+                public string Display { get; private set; } = string.Empty;
+
+                private void _computeDisplay() => Display = Name.ToUpper();
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diags, d => d.Id == "MI0011");
+    }
+
+    [Fact]
+    public void MI0011_NotEmitted_WhenComputedPropertyIsPartial()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                public string Name { get; set; } = string.Empty;
+
+                [Compute(nameof(_computeDisplay))]
+                [Depends("Name")]
+                public partial string Display { get; private set; }
+
+                private void _computeDisplay() => Display = Name.ToUpper();
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.DoesNotContain(diags, d => d.Id == "MI0011");
+    }
+
+    // ── MI0012 — Selection on non-string property ──────────────────────────
+
+    [Fact]
+    public void MI0012_Selection_OnIntProperty()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                [Selection("1", "2", "3")]
+                public int Status { get; set; }
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diags, d => d.Id == "MI0012");
+    }
+
+    [Fact]
+    public void MI0012_NotEmitted_WhenSelectionOnString()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                [Selection("draft", "confirmed", "done")]
+                public string Status { get; set; } = "draft";
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.DoesNotContain(diags, d => d.Id == "MI0012");
+    }
+
+    [Fact]
+    public void MI0012_NotEmitted_WhenSelectionOnNullableString()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace TestModels;
+
+            [Model("my.model")]
+            public partial class MyModel
+            {
+                [Selection("draft", "confirmed", "done")]
+                public string? Status { get; set; }
+            }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.DoesNotContain(diags, d => d.Id == "MI0012");
+    }
+
+    // ── MI0102 — Model in global namespace ────────────────────────────────
+
+    [Fact]
+    public void MI0102_ModelInGlobalNamespace_EmitsWarning()
+    {
+        const string source = """
+            using MultiInherit;
+            [Model("global.model")]
+            public partial class GlobalModel { public string Name { get; set; } = string.Empty; }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.Contains(diags, d => d.Id == "MI0102");
+        Assert.Equal(DiagnosticSeverity.Warning, diags.First(d => d.Id == "MI0102").Severity);
+    }
+
+    [Fact]
+    public void MI0102_NotEmitted_WhenModelInNamespace()
+    {
+        const string source = """
+            using MultiInherit;
+            namespace MyApp.Models;
+            [Model("my.model")]
+            public partial class MyModel { public string Name { get; set; } = string.Empty; }
+            """;
+
+        var diags = GeneratorTestHelper.GetDiagnostics(source);
+
+        Assert.DoesNotContain(diags, d => d.Id == "MI0102");
+    }
+
     // ── No diagnostics on valid model ─────────────────────────────────────
 
     [Fact]
