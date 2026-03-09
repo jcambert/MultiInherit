@@ -16,4 +16,8 @@ public interface IModel
 /// <summary>
 /// Runtime metadata attached to every model instance.
 /// </summary>
-public sealed record ModelMeta(string Name, Type ClrType, IReadOnlyList<string> Inherits);
+public sealed record ModelMeta(
+    string Name,
+    Type ClrType,
+    IReadOnlyList<string> Inherits,
+    IReadOnlyList<string>? DelegationInherits = null);

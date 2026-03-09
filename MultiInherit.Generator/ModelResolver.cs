@@ -249,6 +249,9 @@ internal static class ModelResolver
     {
         var visited  = new HashSet<string>(StringComparer.Ordinal);
         var inStack  = new HashSet<string>(StringComparer.Ordinal);
+        // reported évite les doublons : si deux cycles partagent un nœud,
+        // le second cycle peut ne pas être signalé individuellement — comportement
+        // conservateur intentionnel pour éviter les diagnostics redondants.
         var reported = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var modelName in byModel.Keys)

@@ -39,7 +39,10 @@ public abstract class ModelDbContext : DbContext
     {
         foreach (var meta in MultiInherit.ModelRegistry.All())
         {
-            foreach (var parentName in meta.Inherits)
+            // Utiliser DelegationInherits pour ne configurer que les parents [Inherits],
+            // pas les parents classiques [Inherit] qui n'ont pas de FK sur ce modèle.
+            var delegationParents = meta.DelegationInherits ?? [];
+            foreach (var parentName in delegationParents)
             {
                 var parentMeta = MultiInherit.ModelRegistry.Get(parentName);
                 if (parentMeta == null) continue;
@@ -55,7 +58,7 @@ public abstract class ModelDbContext : DbContext
                         .HasForeignKey(fkProp.Name)
                         .OnDelete(DeleteBehavior.Restrict);
                 }
-                catch { /* complex topologies need manual config */ }
+                catch (InvalidOperationException) { /* topologie complexe — configurer manuellement */ }
             }
         }
     }
@@ -94,7 +97,7 @@ public abstract class ModelDbContext : DbContext
                             .IsRequired(m2o.Required)
                             .OnDelete(onDelete);
                     }
-                    catch { }
+                    catch (InvalidOperationException) { /* déjà configuré par l'autre côté */ }
                     continue;
                 }
 
@@ -147,7 +150,7 @@ public abstract class ModelDbContext : DbContext
                                     r => r.HasOne(clrType).WithMany().HasForeignKey(col1));
                         }
                     }
-                    catch { }
+                    catch (InvalidOperationException) { /* déjà configuré par l'autre côté du M2M */ }
                 }
             }
         }

@@ -37,8 +37,19 @@ public static class ModelRegistry
     {
         var meta = Get(modelName)
             ?? throw new InvalidOperationException($"Model '{modelName}' is not registered.");
-        return Activator.CreateInstance(meta.ClrType)
-            ?? throw new InvalidOperationException($"Cannot instantiate '{meta.ClrType}'.");
+        try
+        {
+            // Activator.CreateInstance lève MissingMethodException (pas null)
+            // si le constructeur sans paramètre est absent.
+            return Activator.CreateInstance(meta.ClrType)
+                ?? throw new InvalidOperationException($"Cannot instantiate '{meta.ClrType.FullName}'.");
+        }
+        catch (MissingMethodException)
+        {
+            throw new InvalidOperationException(
+                $"Model '{modelName}' (type '{meta.ClrType.FullName}') does not expose " +
+                "a public parameterless constructor.");
+        }
     }
 
     /// <summary>Create a new strongly-typed instance.</summary>

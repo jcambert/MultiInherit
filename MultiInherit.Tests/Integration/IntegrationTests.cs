@@ -150,17 +150,25 @@ public class IntegrationTests(PostgreSqlFixture fixture)
     {
         var cat = await CreateCategoryAsync("TempCategory");
 
-        await using var ctx = Ctx();
-        var item = new TestItem { Title = "Orphan", Price = 10m, CategoryId = cat.Id };
-        ctx.Set<TestItem>().Add(item);
-        await ctx.SaveChangesAsync();
+        int itemId;
+        await using (var ctx = Ctx())
+        {
+            var item = new TestItem { Title = "Orphan", Price = 10m, CategoryId = cat.Id };
+            ctx.Set<TestItem>().Add(item);
+            await ctx.SaveChangesAsync();
+            itemId = item.Id;
 
-        // Delete category — should set FK to null (OnDelete = SetNull)
-        var catEntity = await ctx.Set<TestCategory>().FindAsync(cat.Id);
-        ctx.Set<TestCategory>().Remove(catEntity!);
-        await ctx.SaveChangesAsync();
+            // Delete category in the same context — should propagate SetNull in the database
+            var catEntity = await ctx.Set<TestCategory>().FindAsync(cat.Id);
+            ctx.Set<TestCategory>().Remove(catEntity!);
+            await ctx.SaveChangesAsync();
+        }
 
-        var loadedItem = await ctx.Set<TestItem>().FindAsync(item.Id);
+        // Vérification via un contexte séparé pour lire l'état réel en base
+        await using var verifyCtx = Ctx();
+        var loadedItem = await verifyCtx.Set<TestItem>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == itemId);
         Assert.Null(loadedItem!.CategoryId);
     }
 

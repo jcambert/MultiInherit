@@ -124,6 +124,18 @@ internal static class Diagnostics
         isEnabledByDefault: true
     );
 
+    /// <summary>[Compute] property must be declared as partial.</summary>
+    public static readonly DiagnosticDescriptor ComputedPropertyMustBePartial = new(
+        id:                 "MI0011",
+        title:              "Computed property must be partial",
+        messageFormat:      "Property '{0}' on model '{1}' is decorated with [Compute] but is not declared as 'partial'. " +
+                            "Add the 'partial' modifier to allow the source generator to implement the property.",
+        category:           Category,
+        defaultSeverity:    DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri:        "https://github.com/yourorg/MultiInherit/docs/MI0011"
+    );
+
     // ── Warnings (MI01xx) ─────────────────────────────────────────────────
 
     /// <summary>Field name conflict between two classical parents — later parent wins.</summary>

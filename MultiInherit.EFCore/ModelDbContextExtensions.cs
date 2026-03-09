@@ -66,5 +66,5 @@ public static class ModelDbContextExtensions
         int id,
         CancellationToken ct = default)
         where T : class
-        => ctx.Set<T>().FindAsync(new object[] { id }, ct);
+        => ctx.Set<T>().FindAsync(keyValues: new object[] { id }, cancellationToken: ct);
 }

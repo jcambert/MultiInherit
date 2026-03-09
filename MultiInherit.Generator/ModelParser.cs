@@ -231,6 +231,13 @@ internal static class ModelParser
                     diagnostics.Add(Diagnostics.Make(Diagnostics.ComputedPropertyMustBeReadOnly, propLoc,
                         member.Name, modelName));
 
+                // La propriété doit être déclarée partial pour que le générateur puisse l'implémenter
+                if (member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is
+                    PropertyDeclarationSyntax propSyntax &&
+                    !propSyntax.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
+                    diagnostics.Add(Diagnostics.Make(Diagnostics.ComputedPropertyMustBePartial, propLoc,
+                        member.Name, modelName));
+
                 var depends = new List<string>();
                 if (dependsStr != null) depends.AddRange(dependsStr.Split(',').Select(s => s.Trim()));
                 foreach (var da in GetAttributes(member, DependsAttr))

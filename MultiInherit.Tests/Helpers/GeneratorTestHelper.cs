@@ -57,13 +57,35 @@ public static class GeneratorTestHelper
     // ── References ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Collects metadata references from all currently loaded assemblies.
-    /// This guarantees that MultiInherit.Core (already loaded by the test
-    /// process) is included, together with all BCL assemblies.
+    /// Construit la liste des références metadata en commençant par les assemblies
+    /// explicitement requises (garantie de présence), puis en complétant avec les
+    /// autres assemblies chargées dans le domaine d'application.
+    /// L'approche AppDomain seule est non-déterministe : une assembly non encore
+    /// chargée au moment de l'appel serait absente de la liste.
     /// </summary>
     private static IEnumerable<MetadataReference> GetReferences()
-        => AppDomain.CurrentDomain
-            .GetAssemblies()
-            .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
-            .Select(a => (MetadataReference)MetadataReference.CreateFromFile(a.Location));
+    {
+        // Assemblies toujours requises — chargées explicitement
+        var pinned = new[]
+        {
+            typeof(object).Assembly,                                                    // System.Private.CoreLib
+            typeof(System.Linq.Enumerable).Assembly,                                   // System.Linq
+            typeof(System.Collections.Generic.List<>).Assembly,                        // System.Collections
+            typeof(System.ComponentModel.INotifyPropertyChanged).Assembly,             // System.ObjectModel
+            typeof(System.Runtime.CompilerServices.ModuleInitializerAttribute).Assembly, // System.Runtime
+            typeof(MultiInherit.ModelAttribute).Assembly,                              // MultiInherit.Core
+        };
+
+        var locations = new HashSet<string>(
+            pinned.Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
+                  .Select(a => a.Location),
+            StringComparer.OrdinalIgnoreCase);
+
+        // Complément : autres assemblies déjà chargées dans le processus de test
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            if (!asm.IsDynamic && !string.IsNullOrWhiteSpace(asm.Location))
+                locations.Add(asm.Location);
+
+        return locations.Select(loc => (MetadataReference)MetadataReference.CreateFromFile(loc));
+    }
 }

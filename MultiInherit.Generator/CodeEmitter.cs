@@ -332,7 +332,7 @@ internal static class CodeEmitter
         {
             sb.AppendLine("        set");
             sb.AppendLine("        {");
-            sb.AppendLine($"            if ({bf} == value) return;");
+            sb.AppendLine($"            if (System.Collections.Generic.EqualityComparer<{f.TypeName}>.Default.Equals({bf}, value)) return;");
             sb.AppendLine($"            {bf} = value;");
             sb.AppendLine($"            OnPropertyChanged(nameof({f.PropertyName}));");
             sb.AppendLine($"            __InvalidateDependents(nameof({f.PropertyName}));");
@@ -347,13 +347,15 @@ internal static class CodeEmitter
 
     private static void EmitModuleInitializer(StringBuilder sb, ResolvedModel model)
     {
-        var parents = string.Join(", ", model.AllParentNames.Select(p => $"\"{p}\""));
+        var allParents   = string.Join(", ", model.AllParentNames.Select(p => $"\"{p}\""));
+        var delegParents = string.Join(", ", model.DelegationParents.Select(d => $"\"{d.ParentModelName}\""));
         sb.AppendLine("    [ModuleInitializer]");
         sb.AppendLine($"    internal static void __RegisterModel_{Sanitize(model.ModelName)}()");
         sb.AppendLine("        => ModelRegistry.Register(new ModelMeta(");
-        sb.AppendLine($"            Name:    \"{model.ModelName}\",");
-        sb.AppendLine($"            ClrType: typeof({model.ClassName}),");
-        sb.AppendLine($"            Inherits: [{parents}]));");
+        sb.AppendLine($"            Name:              \"{model.ModelName}\",");
+        sb.AppendLine($"            ClrType:           typeof({model.ClassName}),");
+        sb.AppendLine($"            Inherits:          [{allParents}],");
+        sb.AppendLine($"            DelegationInherits: [{delegParents}]));");
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────

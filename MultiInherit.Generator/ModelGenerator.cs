@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Collections.Immutable;
 
 namespace MultiInherit.Generator;
 
@@ -16,34 +17,47 @@ public sealed class ModelGenerator : IIncrementalGenerator
             .Where(static r => r.Declaration is not null || r.Diagnostics.Length > 0)
             .Collect();
 
-        context.RegisterSourceOutput(allResults, static (spc, results) =>
+        // Étape batch : résolution cross-modèles (parents, cycles, relations).
+        // Les dépendances inter-modèles imposent de traiter tous les modèles ensemble.
+        // TODO: ajouter l'égalité structurelle à ResolvedModel pour que Roslyn puisse
+        //       mettre en cache les sorties par modèle et éviter de régénérer les fichiers
+        //       inchangés lors d'une rebuild incrémentale.
+        var resolvedBatch = allResults.Select(static (results, ct) =>
         {
-            // Re-emit parser diagnostics collected during the transform phase
-            foreach (var result in results)
-                foreach (var d in result.Diagnostics)
-                    spc.ReportDiagnostic(d);
+            var diagsBuilder = ImmutableArray.CreateBuilder<Diagnostic>();
+            foreach (var r in results)
+                diagsBuilder.AddRange(r.Diagnostics);
 
-            // Resolve only non-null declarations
             var declarations = results
                 .Where(static r => r.Declaration is not null)
                 .Select(static r => r.Declaration!);
 
-            var (resolved, resolveDiagnostics) = ModelResolver.Resolve(declarations, spc.CancellationToken);
+            var (models, resolveDiags) = ModelResolver.Resolve(declarations, ct);
+            diagsBuilder.AddRange(resolveDiags);
 
-            foreach (var d in resolveDiagnostics)
+            return (Models: ImmutableArray.CreateRange(models), Diagnostics: diagsBuilder.ToImmutable());
+        });
+
+        // Diagnostics enregistrés séparément de l'émission des sources
+        context.RegisterSourceOutput(resolvedBatch, static (spc, batch) =>
+        {
+            foreach (var d in batch.Diagnostics)
                 spc.ReportDiagnostic(d);
+        });
 
-            foreach (var model in resolved)
-            {
-                spc.CancellationToken.ThrowIfCancellationRequested();
+        // Émission par modèle : quand ResolvedModel aura l'égalité structurelle,
+        // Roslyn pourra éviter de régénérer les fichiers .g.cs inchangés.
+        var perModel = resolvedBatch.SelectMany(static (batch, _) => batch.Models);
+        context.RegisterSourceOutput(perModel, static (spc, model) =>
+        {
+            spc.CancellationToken.ThrowIfCancellationRequested();
 
-                var source   = CodeEmitter.Emit(model);
-                var hintName = $"{model.Namespace}.{model.ClassName}.g.cs"
-                    .Replace('<', '_').Replace('>', '_')
-                    .TrimStart('.');
+            var source   = CodeEmitter.Emit(model);
+            var hintName = $"{model.Namespace}.{model.ClassName}.g.cs"
+                .Replace('<', '_').Replace('>', '_')
+                .TrimStart('.');
 
-                spc.AddSource(hintName, source);
-            }
+            spc.AddSource(hintName, source);
         });
     }
 
