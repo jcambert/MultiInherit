@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
+using MultiInherit;
+using MultiInherit.EFCore;
 using MultiInherit.Todo.Components;
 using MultiInherit.Todo.Data;
 using MultiInherit.Todo.Services;
@@ -30,6 +32,12 @@ builder.Services.AddSingleton<TodoEventService>();
 // ── Hosted background service ──────────────────────────────────────────────
 builder.Services.AddHostedService<DeadlineMonitorService>();
 
+
+DatabaseNamingHelper.Configure(opt =>
+{
+    opt.NamingConvention = NamingConvention.SnakeCase;
+    opt.DefaultSchema = "multi_hinherit";
+});
 var app = builder.Build();
 
 // ── Database initialisation ───────────────────────────────────────────────

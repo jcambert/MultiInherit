@@ -8,11 +8,16 @@ namespace MultiInherit.Tests.Unit;
 /// </summary>
 public class DatabaseNamingHelperTests : IDisposable
 {
-    // Capture the convention at construction so we can restore it after each test.
-    private readonly NamingConvention? _original = DatabaseNamingHelper.Options.Value.NamingConvention;
+    // Capture full options state so every test runs with a clean slate.
+    private readonly NamingConvention? _originalConvention  = DatabaseNamingHelper.Options.Value.NamingConvention;
+    private readonly string?           _originalSchema      = DatabaseNamingHelper.Options.Value.DefaultSchema;
 
     public void Dispose() =>
-        DatabaseNamingHelper.Configure(opt => opt.NamingConvention = _original);
+        DatabaseNamingHelper.Configure(opt =>
+        {
+            opt.NamingConvention = _originalConvention;
+            opt.DefaultSchema    = _originalSchema;
+        });
 
     // ── ToNameWithNamingConvention — no convention ─────────────────────────
 
@@ -72,6 +77,37 @@ public class DatabaseNamingHelperTests : IDisposable
         DatabaseNamingHelper.Configure(opt => opt.NamingConvention = null);
 
         Assert.Equal("MyTable", DatabaseNamingHelper.ToNameWithNamingConvention("MyTable"));
+    }
+
+    // ── DefaultSchema ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void DefaultSchema_IsNullByDefault()
+    {
+        DatabaseNamingHelper.Configure(opt => opt.DefaultSchema = null);
+
+        Assert.Null(DatabaseNamingHelper.Options.Value.DefaultSchema);
+    }
+
+    [Fact]
+    public void DefaultSchema_CanBeSet()
+    {
+        DatabaseNamingHelper.Configure(opt => opt.DefaultSchema = "crm");
+
+        Assert.Equal("crm", DatabaseNamingHelper.Options.Value.DefaultSchema);
+    }
+
+    [Fact]
+    public void DefaultSchema_IsTransformedByNamingConvention()
+    {
+        DatabaseNamingHelper.Configure(opt =>
+        {
+            opt.NamingConvention = NamingConvention.UpperCase;
+            opt.DefaultSchema = "crm";
+        });
+
+        // ToNameWithNamingConvention applies to the schema the same way as table names
+        Assert.Equal("CRM", DatabaseNamingHelper.ToNameWithNamingConvention("crm"));
     }
 
     // ── ModelTableAttribute ────────────────────────────────────────────────

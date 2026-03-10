@@ -12,6 +12,14 @@ public sealed class DatabaseNamingOptions
     /// <c>null</c> means no transformation (names are used as-is).
     /// </summary>
     public NamingConvention? NamingConvention { get; set; }
+
+    /// <summary>
+    /// Default schema applied to every model that does not declare an explicit schema
+    /// via <c>[ModelTable(Schema = "...")]</c>.
+    /// Passed through the active <see cref="NamingConvention"/> before being applied.
+    /// <c>null</c> means no default schema (database-provider default is used).
+    /// </summary>
+    public string? DefaultSchema { get; set; }
 }
 
 /// <summary>

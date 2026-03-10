@@ -143,4 +143,6 @@ public class ModelTableTests(PostgreSqlFixture fixture)
         Assert.NotNull(loaded);
         Assert.Equal("Schema-Item-1", loaded.Label);
     }
+
 }
+// Note: DefaultSchema integration tests live in DefaultSchemaTests.cs (own fixture/collection)

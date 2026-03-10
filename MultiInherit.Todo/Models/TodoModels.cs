@@ -3,7 +3,7 @@ namespace MultiInherit.Todo.Models;
 // ═══════════════════════════════════════════════════════════════════════════
 // todo.tag  — étiquette colorée pour classer les tâches (Many2many target)
 // ═══════════════════════════════════════════════════════════════════════════
-
+[ModelTable("MyTodoTag")]
 [Model("todo.tag", Description = "Tag")]
 [SqlConstraint("uq_tag_label", "UNIQUE(Label)", "Tag label must be unique.")]
 public partial class TodoTag

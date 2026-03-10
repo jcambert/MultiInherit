@@ -21,6 +21,14 @@ public abstract class ModelDbContext(DbContextOptions options) : DbContext(optio
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        // Apply default schema before AutoMapModels so EF Core propagates it
+        // to every entity that does not declare an explicit schema.
+        var defaultSchema = DatabaseNamingHelper.Options.Value.DefaultSchema;
+        if (!string.IsNullOrWhiteSpace(defaultSchema))
+            builder.HasDefaultSchema(
+                DatabaseNamingHelper.ToNameWithNamingConvention(defaultSchema));
+
         AutoMapModels(builder);
         ConfigureDelegationInheritance(builder);
         ConfigureRelations(builder);
