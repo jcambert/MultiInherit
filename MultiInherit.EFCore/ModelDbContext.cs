@@ -141,12 +141,35 @@ public abstract class ModelDbContext(DbContextOptions options) : DbContext(optio
         foreach (var meta in MultiInherit.ModelRegistry.All())
         {
             var entity = builder.Entity(meta.ClrType);
-            entity.ToTable(meta.Name.Replace('.', '_'));
+            ApplyTableMapping(entity, meta);
             EnsurePrimaryKey(entity, meta.ClrType);
             IgnoreNonStoredComputed(entity, meta.ClrType);
             // Delegated properties live in the parent's table — do NOT create columns here.
             foreach (var propName in meta.DelegatedPropertyNames ?? [])
                 entity.Ignore(propName);
+        }
+    }
+
+    private static void ApplyTableMapping(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder entity, MultiInherit.ModelMeta meta)
+    {
+        var tableAttr = meta.ClrType.GetCustomAttribute<MultiInherit.ModelTableAttribute>();
+        if (tableAttr != null)
+        {
+            var tableName = DatabaseNamingHelper.ToNameWithNamingConvention(tableAttr.TableName);
+            if (tableAttr.Schema is { Length: > 0 } rawSchema)
+            {
+                var schema = DatabaseNamingHelper.ToNameWithNamingConvention(rawSchema);
+                entity.ToTable(tableName, schema);
+            }
+            else
+            {
+                entity.ToTable(tableName);
+            }
+        }
+        else
+        {
+            // Default: dots → underscores (e.g. "res.partner" → "res_partner")
+            entity.ToTable(meta.Name.Replace('.', '_'));
         }
     }
 

@@ -68,6 +68,27 @@ public sealed class InheritsAttribute(string parentModelName) : Attribute
 }
 
 /// <summary>
+/// Overrides the database table name and optional schema for a model.
+/// By default, <c>ModelDbContext</c> derives the table name from the model's technical name
+/// (e.g. <c>"res.partner"</c> → <c>res_partner</c>).
+/// Use this attribute when the target table has a different name or lives in a specific schema.
+/// <example>
+/// [ModelTable("partners", Schema = "crm")]
+/// [Model("res.partner")]
+/// public partial class ResPartner { ... }
+/// </example>
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+public sealed class ModelTableAttribute(string tableName) : Attribute
+{
+    /// <summary>Explicit table name. Passed through the configured <c>DatabaseNamingHelper</c> naming convention before use.</summary>
+    public string TableName { get; } = tableName;
+
+    /// <summary>Optional schema (e.g. <c>"public"</c>, <c>"crm"</c>). Null means default schema.</summary>
+    public string? Schema { get; init; }
+}
+
+/// <summary>
 /// Optional metadata on a model field (property).
 /// Equivalent to Odoo field definition kwargs.
 /// </summary>

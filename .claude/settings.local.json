@@ -6,7 +6,9 @@
       "Bash(dotnet pack:*)",
       "Read(//tmp/**)",
       "Bash(ls *.nupkg)",
-      "Bash(unzip -l MultiInherit.Generator.0.1.0.nupkg)"
+      "Bash(unzip -l MultiInherit.Generator.0.1.0.nupkg)",
+      "Bash(find /c/Users/jambert/source/repos/MultiInherit -name \"*.cs\" | grep -v obj/ | xargs grep -l \"DatabaseNamingHelper\\\\|NamingConvention\" 2>/dev/null)",
+      "Bash(find /c/Users/jambert/source/repos/MultiInherit -name \"*.csproj\" | grep -v obj/ | xargs grep -l \"Utilities\" 2>/dev/null)"
     ]
   }
 }

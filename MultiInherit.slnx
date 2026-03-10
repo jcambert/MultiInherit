@@ -4,6 +4,7 @@
     <Project Path="MultiInherit.Core\MultiInherit.Core.csproj" />
     <Project Path="MultiInherit.EFCore\MultiInherit.EFCore.csproj" />
     <Project Path="MultiInherit.Generator\MultiInherit.Generator.csproj" />
+    <Project Path="MultiInherit.Utilities/MultiInherit.Utilities.csproj" Id="4c37a986-a0af-4149-a7bc-69e0e2069a5b" />
   </Folder>
 
   <Folder Name="/samples/">

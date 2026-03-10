@@ -396,6 +396,25 @@ private string GetDefaultStatus() => "draft";
 
 The method must be non-static and return a value compatible with the property type. If the method is not found or returns an incompatible type, **MI0013** is emitted. The property must be declared `partial`; if it is not, the generator records the default for metadata purposes only.
 
+### `[ModelTable(tableName)]`
+Overrides the table name (and optionally the schema) that `ModelDbContext` maps this model to.
+By default the table name is derived from the technical model name with dots replaced by underscores
+(e.g. `"res.partner"` → `res_partner`).
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `tableName` *(ctor)* | `string` | — | Explicit table name, passed through `DatabaseNamingHelper` before use |
+| `Schema` | `string?` | `null` | Database schema (e.g. `"public"`, `"crm"`). Also passed through the naming convention. |
+
+```csharp
+[ModelTable("partners", Schema = "crm")]
+[Model("res.partner")]
+public partial class ResPartner { ... }
+// → mapped to table crm.partners (or crm.partners after convention is applied)
+```
+
+The name and schema are transformed by the active `DatabaseNamingHelper` naming convention (see EF Core integration).
+
 ---
 
 ## Computed fields
@@ -546,12 +565,44 @@ services.AddDbContext<AppDbContext>(opt =>
 ```
 
 **What `ModelDbContext` does automatically:**
-- Maps every `[Model]` class to a table named `model_name` (dots → underscores)
+- Maps every `[Model]` class to a table: `[ModelTable]` if declared, otherwise `model_name` (dots → underscores)
 - Adds a shadow `Id` primary key if none is declared
 - Configures FK relationships for `[Inherits]` delegation parents only (not classical)
 - Configures `[Many2one]` / `[Many2many]` FK relationships
 - Ignores non-stored computed fields (`Store = false`)
 - Routes `UNIQUE(...)` sql constraints to `HasIndex().IsUnique()`, others to `CHECK`
+
+**Configuring the database naming convention:**
+
+`DatabaseNamingHelper` controls how table names and schema names provided via `[ModelTable]`
+(or `ToTableWithNamingConvention`) are transformed before being passed to EF Core.
+Configure it once at startup, before `EnsureCreated` or migrations run:
+
+```csharp
+// Apply snake_case to all explicit table/schema names
+DatabaseNamingHelper.Configure(opt =>
+    opt.NamingConvention = NamingConvention.SnakeCase);
+
+await db.Database.EnsureCreatedAsync();
+```
+
+If no convention is set (`null`), names are used as-is.
+
+**`ToTableWithNamingConvention` extension:**
+
+`MultiInherit.EFCore` ships two extension methods on `EntityTypeBuilder<T>` and `OwnedNavigationBuilder`
+that apply the same convention in your own `OnModelCreating` overrides:
+
+```csharp
+protected override void OnModelCreating(ModelBuilder builder)
+{
+    base.OnModelCreating(builder);   // must call base — runs MultiInherit auto-mapping
+
+    // Override a single model's table after auto-mapping
+    builder.Entity<ResPartner>()
+           .ToTableWithNamingConvention("partners", schema: "crm");
+}
+```
 
 **Odoo-like query API:**
 ```csharp

@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MultiInherit.Core\MultiInherit.Core.csproj" />
+    <ProjectReference Include="..\MultiInherit.Utilities\MultiInherit.Utilities.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
   </ItemGroup>
