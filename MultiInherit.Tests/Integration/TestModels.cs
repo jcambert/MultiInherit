@@ -122,3 +122,25 @@ public partial class TestOrderLine
     [ModelField(String = "Quantity")]
     public int Quantity { get; set; } = 1;
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// [ModelTable] test models
+// ════════════════════════════════════════════════════════════════════════════
+
+/// <summary>Model mapped to a custom table name via [ModelTable] (no schema override).</summary>
+[ModelTable("custom_widget")]
+[Model("test.widget", Description = "Test Widget")]
+public partial class TestWidget
+{
+    [ModelField(String = "Label", Required = true)]
+    public string Label { get; set; } = string.Empty;
+}
+
+/// <summary>Model mapped to a custom table + explicit schema via [ModelTable].</summary>
+[ModelTable("schema_widget", Schema = "public")]
+[Model("test.schema.widget", Description = "Test Schema Widget")]
+public partial class TestSchemaWidget
+{
+    [ModelField(String = "Label", Required = true)]
+    public string Label { get; set; } = string.Empty;
+}
